@@ -1,0 +1,9 @@
+.venv/
+.venv312/
+__pycache__/
+models/
+drivers/src/
+drivers/build/
+*.wav
+*.raw
+.DS_Store

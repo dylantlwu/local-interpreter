@@ -1,0 +1,9 @@
+mlx==0.32.4
+mlx-lm==0.32.2
+mlx-whisper==0.4.3
+kokoro-onnx==0.6.1
+sherpa-onnx==2.0.1
+onnxruntime==1.32.0
+soundfile==0.14.0
+numpy==2.5.4
+huggingface-hub==2.4.0

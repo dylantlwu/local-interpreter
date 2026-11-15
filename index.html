@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>同声传译</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --line: #30363d; --text: #e6edf3; --muted: #8b949e;
+    --them: #58a6ff; --me: #3fb950; --warn: #f0883e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+    height: 100vh; display: flex; flex-direction: column; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  .badge { font-size: 12px; color: var(--me); border: 1px solid var(--me); border-radius: 999px; padding: 1px 8px; }
+  .status { margin-left: auto; display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 14px; }
+  .chan { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+  .dot.them { background: var(--them); }
+  .dot.me { background: var(--me); }
+  .dot.voice { animation: pulse .6s infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+  .meter { width: 60px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 0; background: var(--muted); transition: width .08s; }
+  #feed { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .turn { max-width: 78%; padding: 12px 16px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+  .turn.them { align-self: flex-start; border-left: 4px solid var(--them); }
+  .turn.me { align-self: flex-end; border-right: 4px solid var(--me); }
+  .who { font-size: 12px; color: var(--muted); margin-bottom: 4px; display: flex; gap: 10px; }
+  .ms { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .orig { color: var(--muted); font-size: 15px; }
+  .orig.live { font-style: italic; }
+  .tr { font-size: 26px; font-weight: 600; margin-top: 6px; min-height: 1em; }
+  .turn.them .tr { color: #cae8ff; }
+  .turn.me .tr { color: #aff5b4; }
+  .tr .unstable { opacity: .45; }
+  .tr .pred { opacity: .55; text-decoration: underline dotted; text-underline-offset: 6px; }
+  .tag { font-size: 11px; border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; }
+  .err { color: var(--warn); font-size: 14px; margin-top: 6px; }
+  footer { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 20px; border-top: 1px solid var(--line); }
+  button { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font-size: 14px; cursor: pointer; }
+  button.primary { background: #238636; border-color: #2ea043; }
+  button.hold { border-color: var(--me); color: var(--me); user-select: none; }
+  button.hold.active { background: var(--me); color: #000; }
+  label { color: var(--muted); font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  select, #manual input { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 13px; max-width: 220px; }
+  #manual { flex: 1; min-width: 200px; display: flex; gap: 6px; }
+  #manual input { flex: 1; max-width: none; }
+  #devices { display: flex; flex-wrap: wrap; gap: 10px; width: 100%; }
+  #devices.hidden, .hidden { display: none !important; }
+  .hint { color: var(--muted); font-size: 13px; width: 100%; }
+</style>
+</head>
+<body>
+<header>
+  <h1>同声传译</h1>
+  <span class="badge">全本地运行 · 不联网</span>
+  <div class="status">
+    <span class="chan"><span id="dotMe" class="dot"></span><span id="labMe">我</span><span class="meter"><i id="meterMe"></i></span></span>
+    <span class="chan" id="chanMeet"><span id="dotMeet" class="dot"></span><span>会议</span><span class="meter"><i id="meterMeet"></i></span></span>
+    <span id="statusText">未开始</span>
+  </div>
+</header>
+
+<div id="feed"></div>
+
+<footer>
+  <label>模式
+    <select id="modeSel">
+      <option value="live">现场（一个麦克风，自动分辨中英文）</option>
+      <option value="meeting">会议（飞书 / Zoom 等，两路声音分开）</option>
+    </select>
+  </label>
+  <button id="startBtn" class="primary">开始</button>
+  <button id="holdBtn" class="hold" title="现场模式下自动判断不准时用：按住时一律当中文">按住强制中文（空格）</button>
+  <label id="ttsLabel"><input type="checkbox" id="ttsBox"> 朗读我的英文翻译</label>
+  <select id="voiceSel" title="英文朗读声音"></select>
+  <label><input type="checkbox" id="msBox" checked> 显示耗时</label>
+  <div id="devices" class="hidden">
+    <label>我的麦克风 <select id="micSel"></select></label>
+    <label>会议声音来自 <select id="meetInSel"></select></label>
+    <label>英文语音送到 <select id="ttsOutSel"></select></label>
+    <label>会议原声播放到 <select id="monitorSel"></select></label>
+  </div>
+  <form id="manual">
+    <select id="manualWho">
+      <option value="them">对方（英→中）</option>
+      <option value="me">我（中→英）</option>
+    </select>
+    <input id="manualText" placeholder="也可以直接打字测试，回车翻译">
+  </form>
+  <div class="hint" id="hint"></div>
+</footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const feed = $('feed'), statusText = $('statusText');
+const history = [];
+const RATE = 16000;
+const WHO = { en: 'them', zh: 'me' };
+const VAD = {
+  frameMs: 30,
+  startFrames: 4,         // 连续 ~120ms 有声算开口
+  endSilenceMs: 700,      // 默认：静音 0.7s 算一句结束
+  quickEndMs: 300,        // 模型判断"很可能说完了"：静音 0.3s 就切
+  slowEndMs: 700,         // 模型判断"没说完"时不再延长：流式字幕常缺最后一个词，误判会白等（实测有快有慢，所以只用来加速）
+  askAtMs: 450,           // 停顿 0.45s 时去问"说完了吗"（流式识别有 ~0.4s 滞后，太早问最后一个词还没出来）
+  softMaxMs: 7000,        // 说了 7s 还没停，就在下一个换气处切
+  softSilenceMs: 240,
+  maxMs: 20000,
+  preRollFrames: 10,
+  streamEveryFrames: 10,  // 每 ~0.3s 把新音频送去流式识别（CPU）
+  draftEveryMs: 1000,     // 草稿翻译最多每秒一次
+};
+const HINTS = {
+  live: '直接说就行：自动分辨中文还是英文。说话时出实时字幕和草稿翻译（虚线下划线是预测的结尾），说完换成精确结果。',
+  meeting: '会议里：对方的声音翻成中文字幕；你说中文，对方会听到英文语音。设置方法见 README 里的"会议模式"。建议戴耳机。',
+};
+
+// ---------- 设置（记在浏览器里） ----------
+const settings = (() => { try { return JSON.parse(localStorage.getItem('settings') || '{}'); } catch (_) { return {}; } })();
+function saveSettings() { try { localStorage.setItem('settings', JSON.stringify(settings)); } catch (_) {} }
+$('modeSel').value = settings.mode || 'live';
+
+let running = false;
+let forceZh = false;
+let speaking = false;     // 现场模式：电脑朗读时不收音
+let channels = [];
+
+// 每句话按顺序处理：先说的先出结果（两路共用，反正 GPU 只有一块）
+let queue = Promise.resolve(), jobs = 0;
+function enqueue(fn) { jobs++; queue = queue.then(fn).catch(() => {}).finally(() => { jobs--; }); }
+
+const WORKLET = `
+class Tap extends AudioWorkletProcessor {
+  process(inputs) { const ch = inputs[0][0]; if (ch) this.port.postMessage(ch.slice(0)); return true; }
+}
+registerProcessor('tap', Tap);`;
+
+function concat(frames) {
+  const out = new Float32Array(frames.reduce((a, f) => a + f.length, 0));
+  let o = 0;
+  for (const f of frames) { out.set(f, o); o += f.length; }
+  return out;
+}
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+// ---------- 一路声音：收音 → 切句 → 实时字幕 → 草稿 → 正式结果 ----------
+class Channel {
+  // fixedLang: 'zh' / 'en' / null（null = 自动分辨）
+  constructor({ key, deviceId, fixedLang, monitorSink, raw }) {
+    Object.assign(this, { key, deviceId, fixedLang, monitorSink, raw });
+    this.pending = new Float32Array(0); this.preRoll = []; this.utter = [];
+    this.inSpeech = false; this.loudRun = 0; this.silentMs = 0; this.utterMs = 0;
+    this.noiseFloor = 0.004; this.cur = null; this.ids = 0;
+    this.dot = $(key === 'meet' ? 'dotMeet' : 'dotMe');
+    this.meter = $(key === 'meet' ? 'meterMeet' : 'meterMe');
+  }
+
+  async start() {
+    const constraints = this.raw
+      // 虚拟声卡来的会议声音：不要回声消除/降噪/自动增益，免得把声音处理坏
+      ? { deviceId: { exact: this.deviceId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+      : { deviceId: this.deviceId ? { exact: this.deviceId } : undefined, channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+    this.stream = await navigator.mediaDevices.getUserMedia({ audio: constraints });
+    this.ctx = new AudioContext({ sampleRate: RATE });
+    await this.ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' })));
+    const src = this.ctx.createMediaStreamSource(this.stream);
+    this.node = new AudioWorkletNode(this.ctx, 'tap');
+    this.node.port.onmessage = (e) => this.onSamples(e.data);
+    src.connect(this.node);
+    if (this.monitorSink) await this.setMonitor(this.monitorSink);
+  }
+
+  // 把会议原声转到耳机（翻译"夹在中间"）；sink 为空 = 不播放
+  async setMonitor(sink) {
+    if (this.mctx) { this.mctx.close(); this.mctx = null; }
+    if (!sink || !this.stream) return;
+    this.mctx = new AudioContext();
+    if (this.mctx.setSinkId) await this.mctx.setSinkId(sink);
+    this.mctx.createMediaStreamSource(this.stream).connect(this.mctx.destination);
+    if (this.mctx.state === 'suspended') await this.mctx.resume();
+  }
+
+  stop() {
+    this.flush();
+    try { this.node.disconnect(); } catch (_) {}
+    if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+    if (this.ctx) this.ctx.close();
+    if (this.mctx) this.mctx.close();
+    this.meter.style.width = '0';
+    this.dot.className = 'dot';
+  }
+
+  onSamples(chunk) {
+    if (speaking && !this.raw && mode() === 'live') return;
+    const merged = new Float32Array(this.pending.length + chunk.length);
+    merged.set(this.pending); merged.set(chunk, this.pending.length);
+    const frameLen = RATE * VAD.frameMs / 1000;
+    let off = 0;
+    for (; off + frameLen <= merged.length; off += frameLen) this.onFrame(merged.slice(off, off + frameLen));
+    this.pending = merged.slice(off);
+  }
+
+  lang() { return this.fixedLang || (forceZh ? 'zh' : null); }
+
+  onFrame(f) {
+    let sum = 0;
+    for (let i = 0; i < f.length; i++) sum += f[i] * f[i];
+    const rms = Math.sqrt(sum / f.length);
+    this.meter.style.width = Math.min(100, rms * 1500) + '%';
+    const loud = rms > Math.max(this.raw ? 0.006 : 0.012, this.noiseFloor * 3);
+    if (!this.inSpeech) {
+      this.noiseFloor = this.noiseFloor * 0.98 + rms * 0.02;
+      this.preRoll.push(f);
+      if (this.preRoll.length > VAD.preRollFrames) this.preRoll.shift();
+      this.loudRun = loud ? this.loudRun + 1 : 0;
+      if (this.loudRun >= VAD.startFrames) {
+        this.inSpeech = true; this.utter = this.preRoll.slice(); this.preRoll = [];
+        this.silentMs = 0; this.utterMs = this.utter.length * VAD.frameMs;
+        this.cur = { id: `${this.key}-${++this.ids}`, ch: this, el: null, lang: this.lang(), text: '',
+                     sendBuf: this.utter.slice(), sending: null, draftBusy: false, lastDraftAt: 0,
+                     lastDraftText: '', prevDraft: '', endP: null, endSeq: 0, asked: false };
+        this.updateDot();
+      }
+      return;
+    }
+    const u = this.cur;
+    this.utter.push(f); u.sendBuf.push(f);
+    this.utterMs += VAD.frameMs;
+    if (loud) {
+      if (this.silentMs > 0) { u.endP = null; u.asked = false; u.endSeq++; }   // 又开口了，之前的判断作废
+      this.silentMs = 0;
+    } else this.silentMs += VAD.frameMs;
+    if (this.silentMs >= VAD.askAtMs && !u.asked && u.text) { u.asked = true; this.askEnd(u); }
+    // 提前断句要有把握：概率够高，而且字幕够长（中文 ≥8 字、英文 ≥3 个词），免得把一句话切成碎片
+    const longEnough = u.lang === 'zh' ? u.text.length >= 8 : u.text.split(/\s+/).length >= 3;
+    const need = u.endP == null ? VAD.endSilenceMs : (u.endP >= 0.3 && longEnough) ? VAD.quickEndMs : VAD.endSilenceMs;
+    if (this.silentMs >= need || this.utterMs >= VAD.maxMs
+        || (this.utterMs >= VAD.softMaxMs && this.silentMs >= VAD.softSilenceMs)) {
+      u.cutReason = this.utterMs >= VAD.maxMs ? 'max' : this.silentMs >= need ? `静音${need}ms(p=${u.endP == null ? '-' : u.endP.toFixed(2)})` : 'soft';
+      this.flush(); return;
+    }
+    if (u.sendBuf.length >= VAD.streamEveryFrames) this.streamSend(u);
+  }
+
+  updateDot() {
+    const who = this.fixedLang ? WHO[this.fixedLang] : (this.cur && WHO[this.cur.lang]) || 'them';
+    this.dot.className = 'dot ' + who + (this.inSpeech ? ' voice' : '');
+  }
+
+  // 说话中：流式识别（CPU）出实时字幕、判断中英文
+  async streamSend(u) {
+    if (u.sending) return u.sending;
+    if (!u.sendBuf.length) return;
+    const chunk = concat(u.sendBuf);
+    u.sendBuf = [];
+    u.sending = (async () => {
+      try {
+        const r = await fetch(`/stream?sid=${encodeURIComponent(u.id)}`, { method: 'POST', body: chunk.buffer });
+        const j = await r.json();
+        if (j.text && !u.done) {
+          u.text = j.text;
+          if (!this.fixedLang && !forceZh && j.lang) u.lang = j.lang;
+          const who = WHO[u.lang] || 'them';
+          if (!u.el) u.el = newTurn(who); else setWho(u.el, who);
+          const o = u.el.querySelector('.orig');
+          o.textContent = u.text; o.classList.add('live');
+          this.updateDot();
+          maybeDraft(u);
+        }
+      } catch (_) {}
+      u.sending = null;
+    })();
+    return u.sending;
+  }
+
+  // 停顿一出现就问模型：这句话说完了吗？（决定等 0.3s / 0.7s / 1.1s）
+  async askEnd(u) {
+    const seq = u.endSeq;
+    await this.streamSend(u);                 // 先把最后一点音频送去识别，字幕才是最新的
+    if (u.sending) await u.sending;
+    if (u.done || seq !== u.endSeq || !u.text) return;
+    try {
+      const r = await fetch('/endcheck', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: u.text, lang: u.lang || 'en' }) });
+      if (!r.ok) return;
+      const j = await r.json();
+      if (!u.done && seq === u.endSeq) u.endP = j.p;
+    } catch (_) {}
+  }
+
+  flush() {
+    const frames = this.utter, u = this.cur;
+    const had = this.inSpeech;
+    this.inSpeech = false; this.utter = []; this.loudRun = 0; this.silentMs = 0; this.utterMs = 0; this.cur = null;
+    this.updateDot();
+    if (!had || !u) return;
+    u.done = true;
+    window.CUTS && CUTS.push(u.cutReason || 'flush');
+    if (frames.length * VAD.frameMs < 300) { if (u.el) u.el.remove(); return; }
+    handleAudio(concat(frames), u);
+  }
+}
+
+// ---------- 草稿翻译：说话中先译一版；虚线下划线 = 模型预测的结尾 ----------
+async function maybeDraft(u) {
+  const now = performance.now();
+  const grown = u.lang === 'zh' ? u.text.length - u.lastDraftText.length >= 4
+    : u.text.split(/\s+/).length - u.lastDraftText.split(/\s+/).length >= 2;
+  if (u.draftBusy || u.done || jobs > 0 || !grown || now - u.lastDraftAt < VAD.draftEveryMs) return;
+  u.draftBusy = true; u.lastDraftAt = now;
+  const text = u.text;
+  try {
+    const resp = await fetch('/translate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, direction: u.lang === 'zh' ? 'zh2en' : 'en2zh', draft: true }),
+    });
+    if (resp.ok) {
+      let out = '';
+      await readSSE(resp, (msg) => {
+        if (msg.t) out += msg.t;
+        if (msg.done && !u.done) { renderDraft(u, out.trim()); u.lastDraftText = text; }
+      });
+    }
+  } catch (_) {}
+  u.draftBusy = false;
+}
+
+function renderDraft(u, text) {
+  const cut = text.indexOf('[');
+  const main = cut < 0 ? text : text.slice(0, cut);
+  const pred = cut < 0 ? '' : text.slice(cut).replace(/[\[\]]/g, '');
+  let k = 0;
+  while (k < main.length && k < u.prevDraft.length && main[k] === u.prevDraft[k]) k++;
+  u.prevDraft = main;
+  const tr = u.el.querySelector('.tr');
+  tr.innerHTML = '';
+  tr.append(main.slice(0, k));
+  const rest = document.createElement('span'); rest.className = 'unstable'; rest.textContent = main.slice(k);
+  tr.append(rest);
+  if (pred) { const p = document.createElement('span'); p.className = 'pred'; p.textContent = pred; tr.append(p); }
+  u.el.querySelector('.ms').innerHTML = `<span class="tag">${pred ? '草稿 · 含预测' : '草稿'}</span>`;
+}
+
+function newTurn(who) {
+  const el = document.createElement('div');
+  el.className = 'turn ' + who;
+  el.innerHTML = `<div class="who"><span></span><span class="ms"></span></div><div class="orig"></div><div class="tr"></div>`;
+  setWho(el, who);
+  feed.appendChild(el);
+  feed.scrollTop = feed.scrollHeight;
+  return el;
+}
+function setWho(el, who) {
+  el.className = 'turn ' + who;
+  el.querySelector('.who span').textContent = who === 'them' ? (mode() === 'meeting' ? '对方' : '面试官') : '我';
+}
+function showErr(el, msg) { const e = document.createElement('div'); e.className = 'err'; e.textContent = msg; el.appendChild(e); }
+
+// ---------- 一句说完：精确识别 → 正式翻译 ----------
+function handleAudio(audio, u) {
+  const el = u.el || newTurn(WHO[u.lang] || 'them');
+  if (!u.el) el.querySelector('.orig').textContent = '识别中…';
+  enqueue(() => recognize(el, audio, u));
+}
+
+async function recognize(el, audio, u) {
+  let text, asrMs, lang;
+  const q = u.lang ? `lang=${u.lang}` : `lang=auto&sid=${encodeURIComponent(u.id)}`;
+  try {
+    const r = await fetch(`/transcribe?${q}`, { method: 'POST', body: audio.buffer });
+    const j = await r.json();
+    if (j.error) throw new Error(j.error);
+    text = (j.text || '').trim(); asrMs = j.ms; lang = j.lang;
+  } catch (err) { el.querySelector('.orig').textContent = ''; showErr(el, '识别出错：' + err.message); return; }
+  if (!text) { el.remove(); return; }
+  const who = WHO[lang] || 'them';
+  setWho(el, who);
+  el.querySelector('.orig').classList.remove('live');
+  await translate(el, text, who, asrMs);
+}
+
+async function readSSE(resp, onMsg) {
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const parts = buf.split('\n\n');
+    buf = parts.pop();
+    for (const p of parts) if (p.startsWith('data: ')) onMsg(JSON.parse(p.slice(6)));
+  }
+}
+
+async function translate(el, text, who, asrMs) {
+  el.querySelector('.orig').textContent = text;
+  const trEl = el.querySelector('.tr'), msEl = el.querySelector('.ms');
+  const context = history.slice(-6);
+  history.push({ who, text });
+  let out = '', spoken = 0;
+  // 会议模式：我说的话一律变成英文语音送进会议；现场模式看"朗读"开关
+  const speak = who === 'me' && (mode() === 'meeting' || $('ttsBox').checked);
+  const speakReady = (final) => {
+    if (!speak) return;
+    const rest = out.slice(spoken);
+    const m = final ? [rest] : rest.match(/^[\s\S]*?[.!?](?=\s)/);
+    if (m && m[0].trim()) { say(m[0].trim()); spoken += m[0].length; }
+  };
+  try {
+    const resp = await fetch('/translate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, direction: who === 'them' ? 'en2zh' : 'zh2en', history: context }),
+    });
+    let started = false;
+    await readSSE(resp, (msg) => {
+      if (msg.t) {
+        if (!started) { started = true; trEl.textContent = ''; msEl.textContent = ''; }
+        out += msg.t; trEl.textContent = out; feed.scrollTop = feed.scrollHeight; speakReady(false);
+      }
+      if (msg.done) speakReady(true);
+      if (msg.error) throw new Error(msg.error);
+      if (msg.done && $('msBox').checked) {
+        msEl.textContent = (asrMs != null ? `识别 ${(asrMs / 1000).toFixed(1)}s · ` : '')
+          + `翻译首字 ${(msg.first_ms / 1000).toFixed(1)}s · 完成 ${(msg.ms / 1000).toFixed(1)}s`;
+      }
+    });
+  } catch (err) { showErr(el, '翻译出错：' + err.message); }
+}
+
+// ---------- 英文朗读（Kokoro，本地）：会议模式送到虚拟麦克风，现场模式从扬声器放 ----------
+let playChain = Promise.resolve(), pendingSpeech = 0;
+function say(text) {
+  pendingSpeech++;
+  const live = mode() === 'live';
+  if (live) speaking = true;              // 现场模式朗读时不收音，免得把朗读当成别人说话
+  const wav = fetch('/tts', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, voice: $('voiceSel').value }),
+  }).then(r => r.ok ? r.blob() : null).catch(() => null);
+  playChain = playChain.then(async () => {
+    const blob = await wav;
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    const sink = mode() === 'meeting' ? settings.ttsOut : '';
+    if (sink && audio.setSinkId) { try { await audio.setSinkId(sink); } catch (_) {} }
+    await new Promise(res => { audio.onended = audio.onerror = res; audio.play().catch(res); });
+    URL.revokeObjectURL(url);
+  }).finally(() => {
+    if (--pendingSpeech === 0) setTimeout(() => { if (pendingSpeech === 0) speaking = false; }, 300);
+  });
+}
+
+// ---------- 设备列表 ----------
+async function fillDevices() {
+  const devs = await navigator.mediaDevices.enumerateDevices();
+  const ins = devs.filter(d => d.kind === 'audioinput'), outs = devs.filter(d => d.kind === 'audiooutput');
+  const fill = (sel, list, key, guess, extra) => {
+    sel.innerHTML = '';
+    if (extra) sel.append(new Option(extra[1], extra[0]));
+    for (const d of list) sel.append(new Option(d.label || d.deviceId.slice(0, 8), d.deviceId));
+    const want = settings[key] || (list.find(d => guess.test(d.label)) || {}).deviceId;
+    if (want && [...sel.options].some(o => o.value === want)) sel.value = want;
+    settings[key] = sel.value;
+    sel.onchange = () => { settings[key] = sel.value; saveSettings(); };
+  };
+  // 真麦克风和原声输出只列真实设备：不列虚拟声卡，也不列"默认设备"。
+  // 微信这类跟随系统默认设备的软件，需要把系统默认改成 BlackHole，这时选"默认"会形成回声循环。
+  const real = (d) => !/blackhole/i.test(d.label) && !['default', 'communications'].includes(d.deviceId);
+  fill($('micSel'), ins.filter(real), 'mic', /./);
+  fill($('meetInSel'), ins, 'meetIn', /blackhole 2ch/i);
+  fill($('ttsOutSel'), outs, 'ttsOut', /blackhole 16ch/i);
+  fill($('monitorSel'), outs.filter(real), 'monitor', /headphone|耳机|airpods|pd200x/i, ['', '不播放（用系统多输出设备听）']);
+  // 原声输出改了马上生效，不用重新开始
+  $('monitorSel').onchange = async () => {
+    settings.monitor = $('monitorSel').value; saveSettings();
+    const meet = channels.find(c => c.key === 'meet');
+    if (meet) await meet.setMonitor(settings.monitor).catch(e => setStatus('原声输出切换失败：' + e.message));
+  };
+  saveSettings();
+}
+
+const mode = () => $('modeSel').value;
+function applyMode() {
+  const meeting = mode() === 'meeting';
+  $('devices').classList.toggle('hidden', !meeting);
+  $('chanMeet').classList.toggle('hidden', !meeting);
+  $('holdBtn').classList.toggle('hidden', meeting);
+  $('ttsLabel').classList.toggle('hidden', meeting);
+  $('hint').textContent = HINTS[mode()];
+  settings.mode = mode(); saveSettings();
+}
+$('modeSel').onchange = () => { if (running) stopAll(); applyMode(); if (mode() === 'meeting') fillDevices().catch(() => {}); };
+
+function setStatus(text) {
+  statusText.textContent = text || (!running ? '未开始' : forceZh ? '强制中文'
+    : mode() === 'meeting' ? '会议同传中' : '正在听（自动分辨中英文）');
+  $('holdBtn').classList.toggle('active', running && forceZh);
+  $('startBtn').textContent = running ? '停止' : '开始';
+}
+
+async function startAll() {
+  if (mode() === 'meeting') {
+    await navigator.mediaDevices.getUserMedia({ audio: true }).then(s => s.getTracks().forEach(t => t.stop()));  // 先拿权限，设备名才看得到
+    await fillDevices();
+    if (!settings.meetIn || settings.meetIn === settings.mic) throw new Error('请在"会议声音来自"里选虚拟声卡（如 BlackHole 2ch），不要和麦克风相同');
+    channels = [
+      new Channel({ key: 'me', deviceId: settings.mic, fixedLang: 'zh' }),
+      new Channel({ key: 'meet', deviceId: settings.meetIn, fixedLang: 'en', raw: true, monitorSink: settings.monitor || null }),
+    ];
+  } else {
+    channels = [new Channel({ key: 'me', deviceId: null, fixedLang: null })];
+  }
+  for (const c of channels) await c.start();
+  running = true;
+  setStatus('预热模型…');
+  try { await fetch('/warmup', { method: 'POST' }); } catch (_) {}
+  setStatus();
+}
+function stopAll() { channels.forEach(c => c.stop()); channels = []; running = false; setStatus(); }
+
+$('startBtn').onclick = async () => {
+  if (running) { stopAll(); return; }
+  try { await startAll(); }
+  catch (e) { stopAll(); setStatus('启动失败：' + e.message); }
+};
+
+function setForce(on) {
+  if (forceZh === on || mode() !== 'live') return;
+  if (running) channels.forEach(c => c.flush());
+  forceZh = on;
+  setStatus();
+}
+$('holdBtn').onmousedown = () => setForce(true);
+$('holdBtn').onmouseup = $('holdBtn').onmouseleave = () => setForce(false);
+const typing = () => { const a = document.activeElement; return a.tagName === 'SELECT' || (a.tagName === 'INPUT' && a.type !== 'checkbox'); };
+document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !e.repeat && !typing()) { e.preventDefault(); setForce(true); } });
+document.addEventListener('keyup', (e) => { if (e.code === 'Space' && !typing()) { e.preventDefault(); setForce(false); } });
+
+$('manual').onsubmit = (e) => {
+  e.preventDefault();
+  const text = $('manualText').value.trim(), who = $('manualWho').value;
+  if (text) { const el = newTurn(who); enqueue(() => translate(el, text, who, null)); }
+  $('manualText').value = '';
+};
+
+fetch('/voices').then(r => r.json()).then(({ voices, default: def }) => {
+  const NAMES = { a: '美式', b: '英式', f: '女声', m: '男声' };
+  for (const v of voices) $('voiceSel').append(new Option(`${NAMES[v[0]]}${NAMES[v[1]]} · ${v.slice(3)}`, v, false, v === (settings.voice || def)));
+}).catch(() => {});
+$('voiceSel').onchange = () => { settings.voice = $('voiceSel').value; saveSettings(); };
+
+applyMode();
+setStatus();
+</script>
+</body>
+</html>

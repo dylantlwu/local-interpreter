@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>本地同传</title>
+<style>
+:root{
+  --page:#e9ecf1;--bg:#f6f7f9;--bg2:#eef1f5;--card:#ffffff;--ink:#0f1720;--muted:#5b6675;--faint:#9aa4b2;--line:#dde2ea;
+  --blue:#2563eb;--blue-soft:#e6eeff;--green:#0b9a68;--green-soft:#e0f5ec;--shadow:0 18px 50px rgba(15,23,32,.10);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --page:#05070a;--bg:#0b0f14;--bg2:#0f141b;--card:#131a23;--ink:#eef2f6;--muted:#97a3b3;--faint:#5d6978;--line:#232d3a;
+    --blue:#62a0ff;--blue-soft:#14243f;--green:#3ddc97;--green-soft:#0f2b22;--shadow:0 18px 50px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"]{
+  --page:#05070a;--bg:#0b0f14;--bg2:#0f141b;--card:#131a23;--ink:#eef2f6;--muted:#97a3b3;--faint:#5d6978;--line:#232d3a;
+  --blue:#62a0ff;--blue-soft:#14243f;--green:#3ddc97;--green-soft:#0f2b22;--shadow:0 18px 50px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--page);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+#stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center;overflow:hidden;
+  background:radial-gradient(900px 520px at 18% 0%,var(--blue-soft),transparent 62%),radial-gradient(900px 520px at 85% 100%,var(--green-soft),transparent 62%),var(--bg)}
+#stage:before{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:64px 64px;opacity:.35;-webkit-mask-image:radial-gradient(closest-side,#000,transparent);mask-image:radial-gradient(closest-side,#000,transparent)}
+.scene{position:absolute;inset:0;display:none;will-change:opacity}
+.center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.eyebrow{font-size:15px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase}
+h1{font-size:92px;font-weight:800;letter-spacing:.02em;line-height:1.1}
+h2{font-size:46px;font-weight:750;letter-spacing:.01em;line-height:1.2}
+.sub{font-size:26px;color:var(--muted);line-height:1.5}
+.b{color:var(--blue)}.g{color:var(--green)}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:19px;color:var(--ink);white-space:nowrap}
+.chip i{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.chips{display:flex;gap:14px;justify-content:center}
+.wave{display:inline-flex;align-items:center;gap:4px;height:34px}
+.wave i{width:4px;height:100%;border-radius:2px;background:currentColor;transform:scaleY(.3)}
+
+/* scene 1 */
+.bub{position:absolute;max-width:640px;padding:22px 28px;border-radius:26px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);font-size:30px;line-height:1.4;text-align:left}
+.bub .who{display:flex;align-items:center;gap:12px;font-size:16px;letter-spacing:.08em;margin-bottom:10px}
+.bub.them{left:120px;top:128px;border-color:var(--blue)}.bub.them .who{color:var(--blue)}
+.bub.you{right:120px;top:300px;border-color:var(--green)}.bub.you .who{color:var(--green)}
+.bub.you p{color:var(--muted)}
+#s1 .foot{position:absolute;left:0;right:0;bottom:92px;text-align:center}
+#s1 .foot .sub{margin-top:12px}
+
+/* scene 2 */
+#s2 svg{width:120px;height:120px;margin-bottom:18px}
+#s2 .sub{margin:18px 0 34px}
+#s2 .en{margin-top:30px;font-size:17px;letter-spacing:.2em;color:var(--faint)}
+
+/* scene 3 */
+#s3 .head{position:absolute;left:0;right:0;top:56px;text-align:center}
+#s3 .head .eyebrow{margin-bottom:12px}
+.pipe{position:absolute;left:65px;top:214px;display:flex;align-items:stretch}
+.stg{width:250px;padding:22px 22px 20px;border-radius:20px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);transition:border-color .35s,transform .35s}
+.stg.hot{border-color:var(--ink);transform:translateY(-4px)}
+.stg .tag{display:inline-block;font-size:13px;letter-spacing:.1em;padding:4px 10px;border-radius:6px;background:var(--bg2);color:var(--muted)}
+.stg .tag.gpu{background:var(--blue-soft);color:var(--blue)}
+.stg b{display:block;font-size:28px;margin:14px 0 6px}
+.stg .m{font-size:15.5px;color:var(--ink);line-height:1.4;min-height:44px}
+.stg .r{font-size:16px;color:var(--muted);margin-top:8px}
+.flow{position:relative;width:50px;align-self:center;height:2px;background:var(--line)}
+.flow i{position:absolute;left:0;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--green)}
+.tl{position:absolute;left:0;right:0;top:500px;height:170px}
+.tl .ax{position:absolute;left:140px;width:1000px;top:44px;height:3px;border-radius:2px;background:var(--line)}
+.tl .fill{position:absolute;left:140px;top:44px;height:3px;border-radius:2px;background:linear-gradient(90deg,var(--green),var(--blue));width:0}
+.mk{position:absolute;top:35px;width:21px;height:21px;margin-left:-10px;border-radius:50%;background:var(--bg);border:3px solid var(--faint);transition:border-color .3s,background .3s}
+.mk.on{border-color:var(--green);background:var(--green)}
+.ml{position:absolute;top:70px;width:230px;margin-left:-115px;text-align:center;font-size:17px;color:var(--faint);line-height:1.45;transition:color .3s}
+.ml b{display:block;font-size:24px;color:inherit}
+.ml.on{color:var(--muted)}.ml.on b{color:var(--ink)}
+.tl .cap{position:absolute;top:6px;font-size:14px;letter-spacing:.14em;color:var(--faint);width:300px;margin-left:-150px;text-align:center}
+
+/* scene 4 */
+.win{position:absolute;left:140px;top:78px;width:1000px;height:564px;border-radius:24px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);overflow:hidden}
+.wh{height:52px;display:flex;align-items:center;gap:8px;padding:0 22px;border-bottom:1px solid var(--line);font-size:16px;color:var(--muted)}
+.wh i{width:11px;height:11px;border-radius:50%;background:var(--line)}
+.wh b{margin-left:12px;color:var(--ink);font-weight:650}
+.wh span{margin-left:auto;font-size:14px;color:var(--green)}
+.row{position:relative;padding:26px 44px 0 62px;height:256px}
+.row:before{content:"";position:absolute;left:38px;top:30px;bottom:14px;width:4px;border-radius:2px;background:currentColor}
+.row.them{color:var(--blue)}.row.you{color:var(--green);border-top:1px solid var(--line)}
+.row .who{font-size:15px;letter-spacing:.1em;display:flex;gap:14px;align-items:center}
+.row .who em{font-style:normal;color:var(--faint);letter-spacing:.04em}
+.row .src{font-size:25px;color:var(--muted);margin-top:14px;min-height:36px}
+.row .tr{font-size:46px;font-weight:700;color:var(--ink);margin-top:10px;min-height:66px;line-height:1.3;transition:opacity .35s;white-space:nowrap}
+.row .tr.en{font-size:34px;min-height:56px}
+.row .tr.draft{opacity:.42;font-weight:500}
+.pred{text-decoration:underline dotted;text-decoration-thickness:3px;text-underline-offset:10px}
+.row .st{display:inline-block;margin-top:10px;font-size:15px;padding:5px 12px;border-radius:8px;background:var(--bg2);color:var(--muted);transition:background .3s,color .3s}
+.row.them .st.fin{background:var(--blue)}.row.you .st.fin{background:var(--green)}.row .st.fin span{color:var(--card)}
+.row .st:empty{visibility:hidden}
+.out{position:absolute;right:44px;bottom:18px;display:flex;align-items:center;gap:14px;font-size:16px;color:var(--green)}
+.out .wave{height:44px}
+
+/* scene 5 */
+#s5 .head{position:absolute;left:0;right:0;top:60px;text-align:center}
+#s5 .head .sub{margin-top:10px;font-size:22px}
+#s5 svg{position:absolute;inset:0;width:100%;height:100%}
+#s5 text{font-family:inherit;fill:var(--ink)}
+#s5 .bx{fill:var(--card);stroke:var(--line);stroke-width:1.5}
+#s5 .t{font-size:25px;font-weight:700;text-anchor:middle}
+#s5 .s{font-size:15px;fill:var(--muted);text-anchor:middle}
+#s5 .l{font-size:15px;fill:var(--muted)}
+#s5 .lb{stroke:var(--blue);stroke-width:2.5;opacity:.45}#s5 .lg{stroke:var(--green);stroke-width:2.5;opacity:.45}
+#s5 .pl{fill:var(--bg2);stroke:var(--line)}
+#s5 .db{fill:var(--blue)}#s5 .dg{fill:var(--green)}
+#s5 .foot{position:absolute;left:0;right:0;bottom:70px;display:flex;justify-content:center}
+
+/* scene 6 */
+#s6 svg{width:112px;height:112px;margin-bottom:22px}
+#s6 .sub{margin:20px 0 38px;font-size:30px;color:var(--ink)}
+.url{font-size:26px;padding:16px 30px;border-radius:16px;background:var(--ink);color:var(--bg);display:inline-flex;gap:16px;align-items:center}
+.url span{opacity:.6;font-size:17px;letter-spacing:.14em}
+#s6 .en{margin-top:34px;font-size:17px;letter-spacing:.18em;color:var(--faint)}
+
+/* controls */
+#ctl{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:12px;color:var(--muted);box-shadow:var(--shadow);max-width:calc(100vw - 24px);z-index:9}
+#ctl button{width:30px;height:30px;border-radius:50%;border:0;background:var(--bg2);color:var(--ink);cursor:pointer;display:grid;place-items:center;flex:none}
+#ctl svg{width:14px;height:14px;fill:currentColor}
+#bar{width:160px;max-width:30vw;height:6px;border-radius:3px;background:var(--line);cursor:pointer;overflow:hidden}
+#bar i{display:block;height:100%;width:0;background:var(--blue)}
+#ctl kbd{font:inherit;white-space:nowrap}
+body.clean #ctl{display:none}
+body.clean{cursor:none}
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- 1 hook -->
+  <section class="scene" id="s1" data-d="5.6">
+    <div class="bub them" data-in=".3">
+      <div class="who">对方 · ENGLISH <span class="wave" data-n="9"></span></div>
+      <p id="h-en"></p>
+    </div>
+    <div class="bub you" data-in="2.9">
+      <div class="who">你</div>
+      <p>……刚才那句，问的是什么？</p>
+    </div>
+    <div class="foot">
+      <h2 data-in="3.6">听懂要时间，开口也要时间。</h2>
+      <p class="sub" data-in="4">跨语言会议里，语言成了延迟。</p>
+    </div>
+  </section>
+
+  <!-- 2 local -->
+  <section class="scene" id="s2" data-d="5.2">
+    <div class="center">
+      <svg viewBox="0 0 120 120" fill="none" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" data-in=".2">
+        <path d="M38 84h46a19 19 0 0 0 3-37.800A27 27 0 0 0 35 50 17 17 0 0 0 38 84z" stroke="var(--faint)"/>
+        <path id="strike" d="M22 100L98 22" stroke="var(--green)" stroke-width="7" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+      </svg>
+      <h1 data-in=".5">全本地 <span class="g">·</span> 不联网</h1>
+      <p class="sub" data-in="1.1">一台 Mac 上的实时中英同声传译</p>
+      <div class="chips">
+        <span class="chip" data-in="1.7"><i></i>Apple Silicon</span>
+        <span class="chip" data-in="2"><i></i>M4 Mac mini · 16GB 实测</span>
+        <span class="chip" data-in="2.3"><i></i>无云端 API</span>
+      </div>
+      <p class="en" data-in="2.9">NO CLOUD · NO INTERNET · ON-DEVICE</p>
+    </div>
+  </section>
+
+  <!-- 3 pipeline -->
+  <section class="scene" id="s3" data-d="9.8">
+    <div class="head">
+      <p class="eyebrow" data-in=".2">Pipeline · 全部在本机</p>
+      <h2 data-in=".4">声音进来，四步之后是译文和语音</h2>
+    </div>
+    <div class="pipe">
+      <div class="stg" data-in=".9"><span class="tag">CPU</span><b>流式识别</b><p class="m mono">sherpa-onnx zipformer<br>zh / en</p><p class="r">即时字幕</p></div>
+      <div class="flow" data-in="1.2"><i></i><i></i></div>
+      <div class="stg" data-in="1.3"><span class="tag gpu">GPU · MLX</span><b>精确转写</b><p class="m mono">Whisper<br>large-v3-turbo</p><p class="r">准确的最终文本</p></div>
+      <div class="flow" data-in="1.6"><i></i><i></i></div>
+      <div class="stg" data-in="1.7"><span class="tag gpu">GPU · MLX</span><b>翻译</b><p class="m mono">Qwen2.5-7B</p><p class="r">中文 ⇄ English</p></div>
+      <div class="flow" data-in="2"><i></i><i></i></div>
+      <div class="stg" data-in="2.1"><span class="tag">CPU</span><b>语音合成</b><p class="m mono">Kokoro TTS</p><p class="r">自然的英文语音</p></div>
+    </div>
+    <div class="tl" data-in="3">
+      <div class="ax"></div><div class="fill" id="fill"></div>
+      <div class="cap" style="left:615px">说话中 · 草稿持续更新</div>
+      <div class="mk" style="left:140px"></div><div class="ml" style="left:140px"><b>开口</b>Two-pass 两遍</div>
+      <div class="mk" style="left:290px"></div><div class="ml" style="left:290px"><b>约 0.5 s</b>实时字幕出现</div>
+      <div class="mk" style="left:470px"></div><div class="ml" style="left:470px"><b>约 1.4 s</b>草稿译文出现</div>
+      <div class="mk" style="left:810px"></div><div class="ml" style="left:810px"><b>句子结束</b>开始精确处理</div>
+      <div class="mk" style="left:1060px"></div><div class="ml" style="left:1060px"><b>停下后约 2 s</b>准确译文首字</div>
+    </div>
+  </section>
+
+  <!-- 4 demo -->
+  <section class="scene" id="s4" data-d="12">
+    <div class="win" data-in=".1">
+      <div class="wh"><i></i><i></i><i></i><b>本地同传</b><span>● 本地运行 · 离线</span></div>
+      <div class="row them">
+        <div class="who">对方 · ENGLISH <em>自动识别语言</em></div>
+        <div class="src" id="d-en"></div>
+        <div class="tr" id="d-zh"><span id="zh-a"></span><span class="pred" id="zh-b"></span></div>
+        <div class="st" id="st1"></div>
+      </div>
+      <div class="row you" data-in="5.7">
+        <div class="who">你 · 中文 <em>自动识别语言</em></div>
+        <div class="src" id="d-zh2"></div>
+        <div class="tr en" id="d-en2"></div>
+        <div class="st" id="st2"></div>
+        <div class="out" id="out">English 语音 → 对方 <span class="wave" data-n="22"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 routing -->
+  <section class="scene" id="s5" data-d="6.4">
+    <div class="head">
+      <h2 data-in=".2">会议模式：接在你和会议应用之间</h2>
+      <p class="sub" data-in=".5">两个虚拟音频设备，把声音送进来，再把英文语音送回去</p>
+    </div>
+    <svg viewBox="0 0 1280 720" data-in=".8">
+      <line class="lb" x1="370" y1="345" x2="910" y2="345"/><line class="lg" x1="370" y1="435" x2="910" y2="435"/>
+      <g id="dots"></g>
+      <rect class="bx" x="110" y="232" width="260" height="262" rx="20"/>
+      <rect class="bx" x="510" y="232" width="260" height="262" rx="20"/>
+      <rect class="bx" x="910" y="232" width="260" height="262" rx="20"/>
+      <text class="t" x="240" y="275">会议应用</text><text class="s" x="240" y="299">飞书 / Zoom 等</text>
+      <text class="t" x="640" y="275">虚拟音频设备 ×2</text><text class="s" x="640" y="299">BlackHole · 开源</text>
+      <text class="t" x="1040" y="275">本地同传</text><text class="s" x="1040" y="299">运行在你的 Mac 上</text>
+      <rect class="pl" x="532" y="325" width="216" height="40" rx="10"/><rect class="pl" x="532" y="415" width="216" height="40" rx="10"/>
+      <text class="s" x="640" y="350">设备 1 · 会议声音</text><text class="s" x="640" y="440">设备 2 · 虚拟麦克风</text>
+      <text class="l" x="132" y="350" style="fill:var(--blue)">对方的英文 ▸</text><text class="l" x="132" y="440" style="fill:var(--green)">◂ 当作你的麦克风</text>
+      <text class="l" x="932" y="350" style="fill:var(--blue)">▸ 实时中文字幕</text><text class="l" x="932" y="440" style="fill:var(--green)">◂ 你说中文，出英文语音</text>
+    </svg>
+    <div class="foot"><span class="chip" data-in="2.6"><i></i>已在飞书会议中验证可用</span></div>
+  </section>
+
+  <!-- 6 close -->
+  <section class="scene" id="s6" data-d="6">
+    <div class="center">
+      <svg viewBox="0 0 112 112" fill="none" data-in=".2">
+        <rect x="6" y="14" width="66" height="52" rx="16" fill="var(--blue)"/>
+        <rect x="40" y="46" width="66" height="52" rx="16" fill="var(--green)" stroke="var(--bg)" stroke-width="5"/>
+        <path d="M24 40h30M24 30h18" stroke="var(--bg)" stroke-width="5" stroke-linecap="round"/>
+        <path d="M58 72v0M67 64v16M76 68v8M85 62v20M94 70v4" stroke="var(--bg)" stroke-width="5" stroke-linecap="round"/>
+      </svg>
+      <h1 data-in=".5">本地同传</h1>
+      <p class="sub" data-in="1">开源 <span class="g">·</span> 免费 <span class="g">·</span> 你的数据不出电脑</p>
+      <div class="url mono" data-in="1.6"><span>GITHUB</span>github.com/dylantlwu/local-interpreter</div>
+      <p class="en" data-in="2.2">中文 ⇄ ENGLISH · REAL-TIME · ON YOUR MAC</p>
+    </div>
+  </section>
+</div>
+
+<div id="ctl">
+  <button id="pp" aria-label="播放 / 暂停" title="播放 / 暂停 (空格)"><svg viewBox="0 0 14 14"><path id="ppi" d="M2 1h4v12H2zM8 1h4v12H8z"/></svg></button>
+  <button id="rp" aria-label="重播" title="重播 (R)"><svg viewBox="0 0 14 14"><path d="M7 2a5 5 0 1 0 5 5h-1.800A3.200 3.200 0 1 1 7 3.800V6l3.500-3L7 0z"/></svg></button>
+  <div id="bar"><i></i></div>
+  <kbd>H 隐藏</kbd>
+</div>
+
+<script>
+(function(){
+var $=function(s,r){return (r||document).querySelector(s)},$$=function(s,r){return [].slice.call((r||document).querySelectorAll(s))};
+var RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+var stage=$('#stage');
+function fit(){var s=Math.min(innerWidth/1280,innerHeight/720);stage.style.transform='translate(-50%,-50%) scale('+s+')'}
+addEventListener('resize',fit);fit();
+
+function cl(x){return x<0?0:x>1?1:x}
+function p(t,a,b){return cl((t-a)/(b-a))}
+function ease(x){return 1-Math.pow(1-x,3)}
+function io(x){return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2}
+function txt(el,s){if(el._t!==s){el._t=s;el.textContent=s}}
+function cls(el,c,on){if(el['_'+c]!==on){el['_'+c]=on;el.classList.toggle(c,on)}}
+
+// waves
+$$('.wave').forEach(function(w){for(var i=0;i<+w.dataset.n;i++)w.appendChild(document.createElement('i'))});
+// routing dots
+var dots=$('#dots'),NS='http://www.w3.org/2000/svg',dl=[];
+for(var i=0;i<12;i++){var c=document.createElementNS(NS,'circle');c.setAttribute('r',5);c.setAttribute('class',i<6?'db':'dg');c.setAttribute('cy',i<6?345:435);dots.appendChild(c);dl.push(c)}
+
+var S=$$('.scene').map(function(el){return{el:el,d:+el.dataset.d,ins:$$('[data-in]',el).map(function(e){return{e:e,t:+e.dataset.in}}),waves:$$('.wave',el)}});
+var T=0;S.forEach(function(s){s.a=T;T+=s.d});
+
+var hEn=$('#h-en'),strike=$('#strike'),fill=$('#fill'),stgs=$$('.stg'),flows=$$('.flow i'),mks=$$('.mk'),mls=$$('.ml');
+var mx=[140,290,470,810,1060];
+var dEn=$('#d-en'),dZh=$('#d-zh'),zhA=$('#zh-a'),zhB=$('#zh-b'),st1=$('#st1'),dZh2=$('#d-zh2'),dEn2=$('#d-en2'),st2=$('#st2'),out=$('#out');
+var Q='So, what made you interested in this project?';
+var W='What made you interested in this project?'.split(' ');
+var ZH='因为我希望它完全在本地运行。';
+function tag(el,s,fin){if(el._s!==s){el._s=s;el.innerHTML=s?'<span>'+s+'</span>':''}cls(el,'fin',!!fin)}
+
+var custom=[
+function(l){txt(hEn,Q.slice(0,Math.round(p(l,.8,2.7)*Q.length)))},
+function(l){strike.style.strokeDashoffset=1-io(p(l,1.2,1.9))},
+function(l,t){
+  var k=l>2.8?Math.floor((l-2.8)/.8)%4:-1;
+  stgs.forEach(function(s,i){cls(s,'hot',i===k)});
+  flows.forEach(function(f,i){var u=RM?(i%2?.7:.3):((t*.9+(i%2)*.5)%1);f.style.transform='translateX('+(u*42)+'px)';f.style.opacity=Math.sin(u*Math.PI)});
+  var x=140+920*p(l,4,8.4);if(l>8.4)x=1060;
+  fill.style.width=(x-140)+'px';
+  mx.forEach(function(m,i){var on=l>3.6&&x>=m-1;cls(mks[i],'on',on);cls(mls[i],'on',on)});
+},
+function(l){
+  var n=Math.floor(p(l,.6,3.4)*W.length+.001);
+  txt(dEn,l<.6?'':W.slice(0,n).join(' ')+(n<W.length?' …':''));
+  var a='',b='',s='',d=true;
+  if(l>=4.9){a='是什么让你对这个项目感兴趣？';s='定稿 · 准确译文';d=false}
+  else if(l>=3.7){a='是什么让你对这个项目感兴趣？';s='草稿译文 · 边听边更新'}
+  else if(l>=2.4){a='是什么让你对';b='……感兴趣？';s='草稿译文 · 虚线为预判的句尾'}
+  else if(l>=1)s='实时字幕 · 约 0.5 s';
+  txt(zhA,a);txt(zhB,b);cls(dZh,'draft',d);tag(st1,s,!d);
+  txt(dZh2,ZH.slice(0,Math.round(p(l,6.2,8.1)*ZH.length)));
+  var e='',s2='',d2=true;
+  if(l>=8.8){e='Because I wanted it to run entirely on my Mac.';s2='定稿 · 交给语音合成';d2=false}
+  else if(l>=7.4){e='Because I want it to run…';s2='草稿译文'}
+  else if(l>=6.4)s2='实时字幕';
+  txt(dEn2,e);cls(dEn2,'draft',d2);tag(st2,s2,!d2);
+  out.style.opacity=ease(p(l,9.3,9.9));
+},
+function(l,t){
+  dl.forEach(function(c,i){var top=i<6,u=RM?((i%6)+.5)/6:((t*.22+(i%6)/6)%1);c.setAttribute('cx',top?370+540*u:910-540*u);c.style.opacity=Math.min(1,Math.sin(u*Math.PI)*3)});
+},
+function(){}
+];
+
+function render(t){
+  for(var i=0;i<S.length;i++){
+    var s=S[i],l=t-s.a,on=l>=0&&l<s.d;
+    if(s.on!==on){s.on=on;s.el.style.display=on?'block':'none'}
+    if(!on)continue;
+    s.el.style.opacity=Math.min(p(l,0,.55),1-p(l,s.d-.45,s.d));
+    for(var j=0;j<s.ins.length;j++){var q=s.ins[j],e=ease(p(l,q.t,q.t+.75));q.e.style.opacity=e;if(!RM)q.e.style.transform='translateY('+((1-e)*18)+'px)'}
+    for(j=0;j<s.waves.length;j++){var b=s.waves[j].children;for(var k=0;k<b.length;k++){var v=RM?.35+.4*Math.abs(Math.sin(k*1.3)):.22+.78*Math.abs(Math.sin(t*7+k*.9)*Math.sin(t*2.300+k*.37));b[k].style.transform='scaleY('+v+')'}}
+    custom[i](l,t);
+  }
+  barI.style.width=(t/T*100)+'%';
+}
+
+var t=0,playing=true,last=performance.now(),barI=$('#bar i'),ppi=$('#ppi');
+function frame(n){var dt=Math.min(.1,(n-last)/1000);last=n;if(playing){t+=dt;if(t>=T)t-=T}render(t);requestAnimationFrame(frame)}
+function setPlay(v){playing=v;ppi.setAttribute('d',v?'M2 1h4v12H2zM8 1h4v12H8z':'M3 1l10 6-10 6z')}
+$('#pp').onclick=function(){setPlay(!playing)};
+$('#rp').onclick=function(){t=0;setPlay(true)};
+$('#bar').onclick=function(e){var r=this.getBoundingClientRect();t=cl((e.clientX-r.left)/r.width)*T*.999};
+addEventListener('keydown',function(e){var k=e.key.toLowerCase();
+  if(k==='h')document.body.classList.toggle('clean');
+  else if(k===' '){e.preventDefault();setPlay(!playing)}
+  else if(k==='r'){t=0;setPlay(true)}});
+if(location.hash==='#clean')document.body.classList.add('clean');
+window.__seek=function(x){t=x;setPlay(false);render(t)};
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
