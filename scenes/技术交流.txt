@@ -1,0 +1,11 @@
+# 场景：技术交流。保留英文术语。
+@语气: Technical discussion between engineers. Keep technical terms, product names and code identifiers in English; be precise.
+Python
+React
+TypeScript
+PostgreSQL
+API
+部署 = deploy
+上线 = go live
+回滚 = roll back
+上架 = publish (on the app store)

@@ -1,0 +1,208 @@
+# 大模型老师（Claude）写的教学案例：针对本地翻译模型在真实会议里最常犯的错。
+# 用来做 LoRA 训练（corrections.py export）；考试用的是真实会议句子，这里刻意不重复那些原句。
+# 每行用 Tab 分隔：方向  类别  原文  正确译文  [上一句原文  上一句译文]
+# 原文里故意保留了一些识别同音错字（类别"同音错字"），正确译文按说话人本意译。
+zh2en	称呼	老婆，你在干嘛呢？	Honey, what are you up to?
+zh2en	称呼	老婆你看到我发的消息没有？	Honey, did you see the message I sent?
+zh2en	称呼	老公，晚上吃什么？	Babe, what do you want for dinner?
+zh2en	称呼	宝贝，你先睡吧，我还要忙一会儿。	Baby, go ahead and sleep, I've got to work a bit longer.
+zh2en	称呼	亲爱的，门帮我开一下。	Sweetheart, could you get the door for me?
+zh2en	称呼	妈，我这周末回家。	Mom, I'm coming home this weekend.
+zh2en	称呼	兄弟，这个你得帮我一下。	Bro, you've got to help me out with this.
+zh2en	称呼	老婆！快来看！	Honey! Come look, quick!
+zh2en	称呼	老婆？	Honey?
+zh2en	称呼	老婆老婆，听得到吗？	Honey? Honey, can you hear me?
+zh2en	称呼	张总，这个方案您看一下。	Mr. Zhang, could you take a look at this proposal?
+zh2en	称呼	王老师，我有个问题想请教您。	Professor Wang, I have a question I'd like to ask you.
+zh2en	称呼	老婆，我跟你说个好消息。	Honey, I've got some good news for you.
+zh2en	称呼	宝贝你听我说，不是你想的那样。	Baby, listen to me, it's not what you think.
+zh2en	称呼	爸，你那边信号不好吗？	Dad, is the signal bad on your end?
+zh2en	称呼	老婆，这是我老板。	Honey, this is my boss.
+zh2en	称呼	我老婆说她今天加班。	My wife says she's working late today.
+zh2en	称呼	这是我老婆，Lisa。	This is my wife, Lisa.
+zh2en	称呼	老婆你真的太棒了。	Honey, you're seriously amazing.
+zh2en	称呼	哥，你到了没？	Hey man, are you there yet?
+zh2en	人称	我觉得你说得对。	I think you're right.
+zh2en	人称	你先说，我听着。	You go first, I'm listening.
+zh2en	人称	我刚刚把它弄好了，你试试看。	I just got it working, give it a try.
+zh2en	人称	他们说下周给我们答复。	They said they'll get back to us next week.
+zh2en	人称	我不是说你，我是说我自己。	I'm not talking about you, I'm talking about myself.
+zh2en	人称	你听到的是我的声音吗？	Is that my voice you're hearing?
+zh2en	人称	我这边听你很清楚。	I can hear you clearly on my end.
+zh2en	人称	你那边能看到我的屏幕吗？	Can you see my screen on your end?
+zh2en	人称	我搞定了，你那边呢？	I've got mine done, how about you?
+zh2en	人称	这个是我自己做的。	I made this myself.
+zh2en	填充词	喂喂喂，有人吗？	Hello? Anyone there?
+zh2en	填充词	喂，喂，听得见吗？	Hello? Hello, can you hear me?
+zh2en	填充词	那个……就是说，我们可能要晚一点。	So, um, we might be running a bit late.
+zh2en	填充词	嗯，这个嘛，我得想一想。	Hmm, well, I need to think about it.
+zh2en	填充词	然后呢，然后我们就去吃饭了。	And then, then we went to eat.
+zh2en	填充词	对对对，就是这个意思。	Yes, yes, exactly, that's what I mean.
+zh2en	填充词	好好好，我知道了。	Okay, okay, got it.
+zh2en	填充词	就是那个什么，那个文件你发我一下。	Um, that file — could you send it to me?
+zh2en	填充词	呃，我刚刚说到哪儿了？	Uh, where was I?
+zh2en	填充词	哎呀，又断了。	Ugh, it cut out again.
+zh2en	填充词	嗯嗯。	Mm-hmm.
+zh2en	填充词	喂？	Hello?
+zh2en	填充词	欸，你听得见吗？	Hey, can you hear me?
+zh2en	填充词	哈喽哈喽。	Hello, hello.
+zh2en	填充词	你好你好。	Hi, hi.
+zh2en	填充词	那个，等一下哈。	Um, hang on a sec.
+zh2en	填充词	就是说吧，其实也没什么。	I mean, it's really nothing.
+zh2en	填充词	啊对，还有一件事。	Oh right, one more thing.
+zh2en	口语	搞定了！	Done!
+zh2en	口语	牛啊！	Nice!
+zh2en	口语	厉害了我的哥。	Wow, impressive, man.
+zh2en	口语	我是不是很厉害？	Pretty impressive, huh?
+zh2en	口语	不是吧，真的假的？	No way, seriously?
+zh2en	口语	真的假的？	Really?
+zh2en	口语	算了算了，不说了。	Forget it, never mind.
+zh2en	口语	我服了。	I give up.
+zh2en	口语	太离谱了。	That's ridiculous.
+zh2en	口语	这也太卷了吧。	That's way too competitive.
+zh2en	口语	我先撤了。	I'm heading out.
+zh2en	口语	你别逗了。	Come on, you're kidding.
+zh2en	口语	这事儿靠谱吗？	Is this legit?
+zh2en	口语	稳了。	We're good.
+zh2en	口语	完蛋了。	We're screwed.
+zh2en	口语	笑死我了。	I'm dying here.
+zh2en	口语	随便你。	Whatever you want.
+zh2en	口语	看情况吧。	We'll see.
+zh2en	口语	没事没事。	No worries.
+zh2en	口语	可恶，又输了。	Damn, lost again.
+zh2en	口语	舒服！	That feels great!
+zh2en	口语	谁有钱谁说了算。	Whoever has the money calls the shots.
+zh2en	口语	这玩意儿就是个玩具。	This thing is just a toy.
+zh2en	口语	离真正能用还差得远呢。	It's still a long way from being actually usable.
+zh2en	口语	没什么了不起的，大厂早就能做了。	It's nothing special, big companies could already do this.
+zh2en	口语	我去健个身。	I'm going to hit the gym.
+zh2en	口语	等我一下，我马上回来。	Give me a sec, I'll be right back.
+zh2en	口语	你猜怎么着？	Guess what?
+zh2en	口语	我就知道。	I knew it.
+zh2en	口语	这下好了。	Well, great.
+zh2en	口语	有点东西啊。	That's actually pretty good.
+zh2en	口语	讲真，我觉得不行。	Honestly, I don't think it'll work.
+zh2en	口语	哇，刚刚那个声音好吓人。	Whoa, that sound just now was creepy.
+zh2en	口语	一言难尽。	It's a long story.
+zh2en	口语	你说了算。	Your call.
+zh2en	同音错字	我试一下这个同声传预。	Let me try this simultaneous interpretation.
+zh2en	同音错字	这个同声专业做得挺好的。	This simultaneous interpretation works pretty well.
+zh2en	同音错字	我听到道，很清楚。	I can hear you, loud and clear.
+zh2en	同音错字	我们下礼拜要上价到苹果商店。	We're putting it on the App Store next week.	我在等苹果审核。	I'm waiting for Apple's review.
+zh2en	同音错字	审核过了就能上价了。	Once it passes review, we can put it on the store.
+zh2en	同音错字	商业话还要很久。	Commercialization is still a long way off.
+zh2en	同音错字	这个功能还在侧试。	This feature is still in testing.
+zh2en	同音错字	我的麦克风好像没开。	I think my mic isn't on.
+zh2en	同音错字	你在听到的是中文还英文？	Are you hearing Chinese or English?
+zh2en	同音错字	我要录我自己的英文法音。	I'm going to record myself speaking English.
+zh2en	同音错字	这个模型的延尺有点高。	This model's latency is a bit high.
+zh2en	同音错字	我们先做一个演式。	Let's do a demo first.
+zh2en	同音错字	这个接口我已经对接号了。	I've already got this API integrated.
+zh2en	同音错字	数据都在本地跑，不上云。	All the data runs locally, nothing goes to the cloud.
+zh2en	同音错字	这个参数要再条一下。	This parameter needs some more tuning.
+zh2en	同音错字	他的仓位太重了，容易暴仓。	His position is too big, he could easily get liquidated.
+zh2en	同音错字	你把那个连接发给我。	Send me that link.
+zh2en	同音错字	我刚刚在跑步，有点喘。	I was just running, I'm a bit out of breath.
+zh2en	同音错字	这个账号是我老婆的。	This account is my wife's.
+zh2en	同音错字	下礼拜三我们再开个会。	Let's have another meeting next Wednesday.
+zh2en	半句	然后我觉得	And then I think—
+zh2en	半句	所以说这个东西	So this thing—
+zh2en	半句	太好了，那就是说	Great, so that means—
+zh2en	半句	我们最大的问题是	Our biggest problem is—
+zh2en	半句	等一下，我想想，那个	Wait, let me think, um—
+zh2en	半句	如果下周还不行的话	If it still doesn't work next week—
+zh2en	半句	我跟你讲	Let me tell you—
+zh2en	半句	其实我一直想说	Actually, I've been meaning to say—
+zh2en	不加内容	你好。	Hello.
+zh2en	不加内容	喂，你好。	Hello? Hi.
+zh2en	不加内容	好。	Okay.
+zh2en	不加内容	可以。	Sure.
+zh2en	不加内容	行吧。	Fine.
+zh2en	不加内容	对。	Right.
+zh2en	不加内容	明白。	Got it.
+zh2en	不加内容	谢谢。	Thanks.
+zh2en	不加内容	拜拜。	Bye.
+zh2en	不加内容	听到了。	I can hear you.
+zh2en	不加内容	看到了。	I can see it.
+zh2en	不加内容	等一下。	Hold on.
+zh2en	不加内容	没问题。	No problem.
+zh2en	不加内容	我在。	I'm here.
+zh2en	不加内容	OK，收到。	OK, got it.
+zh2en	术语	我做多被止损了。	My long got stopped out.
+zh2en	术语	这个币的资金费率太高了。	The funding rate on this coin is too high.
+zh2en	术语	盘口太薄，一下就砸下去了。	The order book was too thin, it dumped right away.
+zh2en	术语	开了十倍杠杆，差点爆仓。	I opened 10x leverage and almost got liquidated.
+zh2en	术语	滑点太大，成交价很差。	The slippage was huge, I got a terrible fill.
+zh2en	术语	我们先挂个限价单。	Let's put in a limit order first.
+zh2en	术语	这波行情来得太快了。	This move came way too fast.
+zh2en	术语	我减仓了一半。	I cut my position in half.
+zh2en	术语	这个版本下周上线。	This version goes live next week.
+zh2en	术语	我们下周再对接一下细节。	Let's sync up on the details next week.
+zh2en	术语	这个需求先排期吧。	Let's put this request on the schedule.
+zh2en	术语	这个bug我已经修了，今晚发版。	I've fixed this bug, we're shipping tonight.
+zh2en	术语	我们先跑通一个最小版本。	Let's get a minimal version working end to end first.
+zh2en	术语	代码已经提交了，你帮我review一下。	The code's committed, can you review it for me?
+zh2en	术语	这个模型是本地部署的。	This model is deployed locally.
+zh2en	术语	这个月底能不能落地？	Can we get this done by the end of the month?
+zh2en	术语	报价我们内部再过一下。	We'll go over the quote internally again.
+zh2en	术语	这个项目的预算卡得很紧。	The budget for this project is really tight.
+zh2en	术语	我们先拉个群，把人拉进来。	Let's set up a group chat and add everyone.
+zh2en	术语	这个功能要等苹果审核才能上架。	This feature has to pass Apple's review before it can go on the App Store.
+en2zh	口语	Can you walk me through how you set this up?	你能给我讲讲你是怎么搭起来的吗？
+en2zh	口语	Walk me through your thinking.	跟我讲讲你的思路。
+en2zh	口语	I'm so dead.	我完了。
+en2zh	口语	That's hilarious, I'm dead.	太好笑了，笑死我了。
+en2zh	口语	It's a bit too AI.	有点太AI了。
+en2zh	口语	It sounds too robotic.	听起来太像机器人了。
+en2zh	口语	That's really cool.	真的很酷。
+en2zh	口语	No worries.	没事。
+en2zh	口语	Fair enough.	也有道理。
+en2zh	口语	I'm down.	我可以啊。
+en2zh	口语	You're breaking up.	你声音断断续续的。
+en2zh	口语	You're on mute.	你静音了。
+en2zh	口语	Can you hear me now?	现在能听到吗？
+en2zh	口语	I can't hear you.	我听不到你。
+en2zh	口语	Your mic isn't on.	你的麦克风没开。
+en2zh	口语	Let me share my screen.	我来共享一下屏幕。
+en2zh	口语	Hang on a sec.	等一下。
+en2zh	口语	Sounds good.	好啊。
+en2zh	口语	Got it.	明白了。
+en2zh	口语	My bad.	我的错。
+en2zh	口语	No way!	不会吧！
+en2zh	口语	Are you serious?	你认真的吗？
+en2zh	口语	That's wild.	太离谱了。
+en2zh	口语	I'm swamped this week.	我这周忙死了。
+en2zh	口语	Let's circle back on this.	这个我们回头再说。
+en2zh	口语	Let's touch base next week.	我们下周再碰一下。
+en2zh	口语	It's a no-brainer.	这还用想吗。
+en2zh	口语	That's a game changer.	这能改变整个局面。
+en2zh	口语	I'll keep you posted.	有进展我告诉你。
+en2zh	口语	What's the catch?	有什么坑吗？
+en2zh	口语	Where are you right now?	你现在在哪？
+en2zh	口语	What is this?	这是什么？
+en2zh	口语	English.	英文。
+en2zh	口语	Okay.	好。
+en2zh	口语	Yeah, I heard you.	嗯，我听到了。
+en2zh	不加内容	Hi.	嗨。
+en2zh	不加内容	Yes.	是的。
+en2zh	不加内容	Hello?	喂？
+en2zh	不加内容	Thanks.	谢谢。
+en2zh	不加内容	Wait.	等等。
+en2zh	半句	So what I'm trying to say is	所以我想说的是——
+en2zh	半句	The thing is	问题是——
+en2zh	半句	If we could just	如果我们能——
+en2zh	面试	Tell me about a time you had to deal with a difficult teammate.	说说你和难相处的队友打交道的一次经历。
+en2zh	面试	What's your biggest weakness?	你最大的缺点是什么？
+en2zh	面试	Why do you want to work here?	你为什么想来这里工作？
+en2zh	面试	How would you handle a production outage?	线上出故障了你会怎么处理？
+en2zh	面试	Can you explain how you'd scale this to a million users?	你能讲讲怎么把它扩展到一百万用户吗？
+en2zh	面试	What would you do differently next time?	下次你会有什么不同的做法？
+en2zh	面试	Do you have any questions for us?	你有什么问题想问我们吗？
+en2zh	术语	The order book is pretty thin right now.	现在盘口挺薄的。
+en2zh	术语	I got liquidated on that trade.	那笔交易我爆仓了。
+en2zh	术语	Funding just flipped negative.	资金费率刚刚转负了。
+en2zh	术语	We're shipping this on Friday.	我们周五发版。
+en2zh	术语	Can you push the fix to staging?	你能把修复推到测试环境吗？
+en2zh	术语	Let's sync up tomorrow.	我们明天对一下。
+en2zh	术语	What's the latency on that?	那个延迟是多少？
+en2zh	术语	It runs fully on-device.	它完全在本地设备上跑。

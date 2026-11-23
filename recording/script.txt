@@ -1,0 +1,320 @@
+# 录音稿：给"声音克隆 + 越用越像我"攒数据
+#
+# 怎么读：
+# - 像平常讲话一样，别播音腔。读错了、笑场了、卡住了都没关系，重来一句就好，自然的停顿和语气词正是要学的。
+# - 英文按你平时的念法念，不用刻意标准。你的口音就是你声音的一部分。
+# - 每段 3–5 分钟，一次读一两段就休息，嗓子累了声音会变。尽量同一个房间、同一支麦克风、离嘴巴一个拳头远。
+# - 读稿的部分文字是已知的，不用再校对；最后一段「自由讲」是回忆访谈，讲多久都行，会后在纠错页面校对文字。
+#
+# 稿子里的双语切换类型（每段都会混着出现）：
+#   [插词]   中文句子里插英文名词：这个 bug 我改好了
+#   [动词]   英文动词 + 中文语法：你 check 一下、我 push 上去了、deploy 好了没
+#   [句间]   整句切换：好，let's do it.
+#   [英夹中] 英文句子里夹中文：I think 这个方向 is right.
+#   [缩写]   英文缩写的念法：AI、API、GPU、iOS、PRD
+#   [语气]   中英语气词：OK 啦、sorry 哦、nice 啊
+#   [引语]   转述别人的英文：他跟我说 "it's too AI"
+#   [纯中] [纯英] 不切换的整句，作对照
+#
+# 格式：## 开头是段落标题；其余每行一句。
+
+## 1 热身：打招呼、开会前
+喂，听得到吗？我这边信号有点差。
+Hello? 喂喂，能听到我吗？
+OK，听到了听到了，你那边声音有点小哦。
+等一下，我先把 mic 打开。
+你 share 一下 screen，我这边看不到。
+好了好了，可以了，我们开始吧。
+Sorry 哦，我刚刚在忙，晚了两分钟。
+今天大概讲半个小时，后面我还有个 meeting。
+你先说你那边的 update，然后我再讲我的。
+我先 mute 一下，旁边有点吵。
+嗯，我在，我在听。
+刚刚断掉了，你最后那句我没听清楚，可以再讲一次吗？
+Wait, wait，你再说一遍？
+没事没事，慢慢来，不急。
+OK 啦，那就这样，有问题微信找我。
+Bye bye，下次聊。
+
+## 2 日常口语：吃饭、生活、心情
+今天好累哦，从早上忙到现在都还没吃饭。
+我们中午吃什么？要不要叫外卖？
+随便啦，你决定就好。
+那家店上次排了一个小时，太夸张了。
+我最近在减肥，晚上不吃饭了，啊不对，是少吃一点。
+今天天气超好的，想出去走走。
+下雨了，我没带伞，完蛋了。
+刚刚那个声音好恐怖哦，吓死我了。
+舒服了，舒服了，我去运动一下。
+我等一下要去健身房，回来再打给你。
+这个周末有什么计划？
+没计划，就在家躺着，什么都不想做。
+你说的那个电影我看了，还不错啦，但是结局有点烂。
+哇，这个也太好吃了吧！
+算了算了，不说了，越说越气。
+真的假的？不会吧？
+我就知道会这样。
+讲真的，我觉得还好，没有你说的那么夸张。
+好啦好啦，我错了，下次不会了。
+你猜怎么着？我中奖了，虽然只有五块钱。
+
+## 3 工作：AI 产品、写代码（插词 / 动词）
+这个 feature 下周上线，我们这周要把 bug 全部修完。
+你帮我 check 一下这个 API 是不是挂了。
+我刚刚 push 上去了，你 pull 一下再试试。
+测试都 pass 了没？pass 了就可以 merge。
+这个 PR 你帮我 review 一下，不急，今天内就好。
+Server 又 down 了，我去看一下 log。
+它其实是有四五个 model 串在一起的，ASR、翻译、TTS，全部在本地跑。
+我们用的是 Whisper 做识别，Qwen 做翻译，Kokoro 做朗读。
+GPU 的 memory 不够，16G 有点紧。
+延迟大概两秒，再往下压就要换小一点的 model。
+这个 prompt 写得不好，model 一直在乱编。
+我们先跑通一个最小版本，demo 能用就好。
+用户的 feedback 很重要，先上线再说。
+这个需求我觉得不急，先放 backlog。
+PRD 我写好了，你看一下有没有问题。
+我不会写 code，但是我会用 AI 写 code。
+Claude 帮我把整个 pipeline 搭起来，我只负责讲需求。
+这个 bug 很奇怪，local 是好的，上了 production 就坏掉。
+我们要不要开个 repo，open source 出去？
+先私有，等我看过再 public。
+这个 LoRA 训练了四十五分钟，loss 降得还不错。
+Overfitting 了，第三百步比第两百步还差。
+要做 evaluation，不然你不知道它到底有没有变好。
+大模型带小模型，这个思路我觉得是对的。
+我们把数据都存在本地，不上云，privacy 比较好。
+同声传译最难的不是翻译，是知道对方什么时候讲完。
+这个 VAD 太敏感了，咳嗽一下它就以为我在讲话。
+它把 "老婆" 翻成 "my wife"，我是在叫她欸，不是在介绍她。
+
+## 4 交易（插词 / 缩写 / 数字）
+我昨天做空 BTC，结果被爆仓了。
+滑点太大了，盘口太薄，一下就砸下去。
+Funding rate 又转负了，空头要付钱了。
+我开了十倍 leverage，现在想想真的太冲动。
+先挂个 limit order，不要追高。
+Stop loss 设在三十二块，跌破就走。
+这波行情来得太快了，我根本来不及反应。
+我减仓了一半，剩下的看情况。
+Order book 上面有一个大单，我觉得是假的，等一下就撤。
+Volatility 太高的时候我就不交易，休息。
+赚钱的时候不要飘，亏钱的时候不要慌。
+我们做的 AI 助手，人类是老师，它在用的过程中一直学。
+Backtest 的结果很好看，但是 live 一跑就不行了。
+这个策略的 Sharpe 只有零点八，不够好。
+最大回撤百分之十五，我可以接受。
+主要是解决现金流的问题，现金流稳了，什么都好说。
+谁有流量谁说了算，这个在哪个行业都一样。
+我跟你说，这个市场永远是对的，错的是你自己。
+
+## 5 家人朋友（称呼 / 语气）
+亲爱的，你在干嘛？
+喂喂，亲爱的，你听得到我吗？
+你看你看，我做出来了！厉害吧？
+你先睡，我还要忙一下。
+妈，我这周末回家，不用准备太多菜啦。
+爸，你那个手机我帮你设置好了，下次不懂再问我。
+兄弟，这次真的要靠你了。
+家里人说我每天都在弄电脑，都不理他们。
+我们出国玩的时候，我就直接讲中文，它帮我翻成英文。
+小朋友不要哭，我等一下就回来。
+谢谢你哦，真的帮了我很大的忙。
+生日快乐！今年要开开心心的。
+我好想你们哦，等忙完这一阵就回去看你们。
+不管发生什么事，我都会在。
+
+## 6 英文为主，夹中文（英夹中 / 句间）
+I think 这个方向 is right, but we need more data.
+Let's do it. 就这么定了。
+好，let's go.
+Honestly, 我觉得还差一点。
+It's really cool, 但是太 AI 了。
+Can you hear me now? 现在可以了吗？
+No worries, 慢慢来。
+That's the thing, 我们没有足够的时间。
+Give me five minutes, 我马上回来。
+I'm not sure 他会不会同意。
+Okay, 那我们下周再 sync 一下。
+This is my wife, 我老婆。
+Sounds good, 那就这样。
+I mean, 这个东西其实没什么了不起的。
+Wait, 你是说真的吗？
+
+## 7 纯英文（让克隆的英文声音也像你）
+Hi, nice to meet you.
+Can you hear me okay?
+Sorry, my English is not very good, but I'll try.
+I'm working on a real-time translation tool.
+Everything runs locally on my Mac. Nothing goes to the cloud.
+Let me share my screen and show you a quick demo.
+The latency is about two seconds right now.
+I don't write code myself, but I know exactly what I want to build.
+We're training a small model with help from a bigger one.
+What do you think? Does that make sense?
+That's a good question. Let me think about it.
+I got liquidated on my short last night.
+The order book was way too thin.
+Honey, can you hear me?
+I'm going to the gym. I'll call you later.
+Thank you so much. I really appreciate it.
+No way! Are you serious?
+Okay, let's wrap up here. Talk to you next week.
+
+## 8 情绪和语气（同一个人，不同的状态）
+哇！真的成功了！太好了！
+啊……我不知道欸，让我想一下。
+你确定吗？我怎么觉得不太对。
+不要再说了，我已经决定了。
+哈哈哈，笑死我了，你怎么那么好笑。
+唉，又失败了，第五次了。
+可恶，又输了！
+拜托拜托，帮我一下啦。
+小声一点，小朋友在睡觉。
+快快快，来不及了！
+慢一点，慢一点，我跟不上。
+没关系，真的没关系，我不怪你。
+我真的很生气，这种事情怎么可以这样做？
+好吧……那就这样吧。
+你知道吗，我等这一天等了好久。
+
+## 9 数字、时间、名字、缩写
+今天是二零二六年十一月十六号，星期一。
+我的会议在下午三点半，大概一个小时。
+这台 Mac mini 是 M4，十六 G 内存。
+价格从三十五块涨到四十二块五，涨了百分之二十一。
+我们大概有七个 G 的 model 要下载。
+首字延迟七百三十毫秒，以前是两秒多。
+API、AI、GPU、CPU、iOS、PDF、PRD、LLM、TTS、ASR。
+Hyperliquid、Claude、WeChat、Lark、GitHub、Railway、Apple。
+一、二、三、四、五、六、七、八、九、十。
+One, two, three, four, five, six, seven, eight, nine, ten.
+电话是一三八，零零一二，三四五六。
+10x leverage、5% stop loss、24 小时、7 天。
+
+## 10 自由讲：回忆访谈（想讲多久就讲多久，这些会成为你留下来的故事）
+# 这一段没有稿子，看着问题直接讲。讲的时候可以中英混着来，就像平常跟朋友聊天。
+# 会后在纠错页面把识别的文字改对。
+讲讲你小时候住的地方，家里是什么样子。
+你人生中第一份工作是什么？那时候的你在想什么？
+讲讲你和你最重要的一个人是怎么认识的。
+你工作里最得意的一次和最失败的一次，各是什么感觉？
+你觉得自己最骄傲的一件事是什么？
+你最后悔的一件事是什么？如果重来你会怎么做？
+你现在在做的事情，为什么要做？
+你最近学会的一件新本事是什么？是怎么学会的？
+你想对你最在乎的人说什么？
+如果有人十年后听到这段录音，你想跟他说什么？
+你做决定的时候，最看重的是什么？
+有什么是你一直相信、从来没变过的？
+讲一个你最喜欢的笑话，或者一件很好笑的事。
+你平常怎么安慰别人？
+你生气的时候是什么样子？后来是怎么和好的？
+你最喜欢吃什么？谁做的最好吃？
+讲讲你去过最难忘的一个地方。
+你觉得钱是什么？
+你觉得 AI 会怎么改变世界？会让人更好还是更坏？
+如果你只能留下三句话，你会说什么？
+
+# ===== 第二轮：朗读口吻（给念信、念书用）=====
+# 前面 1–9 段是聊天口吻，念信念书时克隆的声音不够像你。这几段专门攒「念给人听」的声音：
+# - 比平常说话慢一点，平稳、清楚，可以有感情，但不用播音腔。想象念给孩子或家人听。
+# - 每句一口气读完（都在 10 秒以内），句中的逗号自然停一下就好。
+# - 读错了就重录这一句。古文按你习惯的读音念，不确定的字跳过也行。
+# - 11–15 段共 86 句，人声约 10 分钟，可以分几次读。
+
+## 11 朗读：写给孩子或家人的信（慢一点，像念给他听）
+亲爱的孩子，写这封信的时候，你还在隔壁房间睡觉。
+我想趁现在把一些话写下来，等你长大了再慢慢看。
+你出生那天，外面下着小雨，大家在医院走廊里走来走去。
+护士把你抱出来的时候，我第一次知道什么叫手足无措。
+你小时候很爱哭，但只要我抱着你走一走，你就安静下来。
+我希望你做一个诚实的人，哪怕说真话会让你吃亏。
+犯错不可怕，可怕的是不敢承认，也不愿意改。
+遇到不懂的事情，先去问，先去学，不要假装自己都懂。
+钱很重要，但不要为了钱，去做让自己睡不着的事。
+交朋友不在多，有一两个能说真心话的，就已经很幸运了。
+家里每个人都为这个家付出了很多，请你一定要好好对他们。
+如果有一天你觉得很累，回家就好，家里永远有你的位置。
+我不是一个完美的人，有些事情我也做得不够好。
+但我想让你知道，我每一天都在努力，做一个配得上你的家人。
+不管你以后做什么工作，只要你喜欢，并且认真去做，我都支持你。
+你要记得，手上永远都要留着选择，不要把自己逼到没有退路。
+愿你健康，愿你快乐，愿你一生都被温柔地对待。
+写到这里，天快亮了，我该去看看你有没有踢被子。
+永远爱你的家人。
+
+## 12 朗读：睡前故事（有对话，可以带一点表情）
+从前，在一座很高的山上，住着一只很小很小的狐狸。
+小狐狸每天晚上都坐在山顶，抬头看天上的星星。
+有一天，它问妈妈：“星星为什么不会掉下来呀？”
+妈妈笑着说：“因为每一颗星星，都有人在想着它。”
+小狐狸想了想，又问：“那会不会有人，也在想着我呢？”
+妈妈把它抱进怀里：“当然有啊，我每天都在想着你。”
+第二天，小狐狸决定下山，去看看山下的世界是什么样子。
+它走过一片金黄色的麦田，麦子在风里轻轻地摇。
+它遇见了一只老乌龟，老乌龟慢慢地说：“孩子，别着急。”
+“路要一步一步走，饭要一口一口吃，日子要一天一天过。”
+天黑的时候，小狐狸有一点害怕，也有一点想家。
+它抬起头，发现天上的星星，和山顶上看到的一模一样。
+于是它知道，不管走到哪里，妈妈都在想着它。
+小狐狸笑了，它闭上眼睛，在星星底下慢慢地睡着了。
+好了，故事讲完了，你也该闭上眼睛，晚安。
+
+## 13 朗读：古文和诗（按你习惯的读音念）
+学而时习之，不亦说乎？有朋自远方来，不亦乐乎？
+己所不欲，勿施于人。
+知之为知之，不知为不知，是知也。
+三人行，必有我师焉。择其善者而从之，其不善者而改之。
+天将降大任于是人也，必先苦其心志，劳其筋骨。
+老吾老，以及人之老；幼吾幼，以及人之幼。
+千里之行，始于足下。
+锄禾日当午，汗滴禾下土。谁知盘中餐，粒粒皆辛苦。
+床前明月光，疑是地上霜。举头望明月，低头思故乡。
+白日依山尽，黄河入海流。欲穷千里目，更上一层楼。
+慈母手中线，游子身上衣。临行密密缝，意恐迟迟归。
+谁言寸草心，报得三春晖。
+海内存知己，天涯若比邻。
+人生自古谁无死，留取丹心照汗青。
+少壮不努力，老大徒伤悲。
+春眠不觉晓，处处闻啼鸟。夜来风雨声，花落知多少。
+
+## 14 朗读：说说我的想法（像在给人讲道理，平稳一点）
+这些年我学到的一件事，是很多事情急不来。
+市场每天都在变，但人性几十年都没有怎么变过。
+赚钱的时候要想到风险，亏钱的时候要想到机会。
+一个好的决定，不一定马上有好的结果，但长期来看一定不会差。
+做了这么多年事情，我发现最大的敌人从来不是别人，而是我自己。
+人这一辈子，能真正做好一两件事，就已经很了不起了。
+很多工具我不一定会用，但我知道自己想要什么，这一点更重要。
+工具会越来越强，可是问对问题的能力，永远要靠自己。
+我常常想，十年以后回头看今天，我会不会觉得自己做对了。
+如果答案是会，那现在再辛苦一点也没关系。
+身体是最重要的，没有健康，其他的一切都是空的。
+家人不是用来讲道理的，是用来陪伴的。
+有时候不说话，坐在旁边陪着，就是最好的安慰。
+一个人走得快，一群人走得远，这句话我越来越相信。
+失败了不要紧，重要的是知道自己为什么失败。
+我希望我留下来的，不只是钱，还有做人做事的方法。
+
+## 15 Reading aloud: English letters and stories（英文也慢一点、平稳一点）
+Dear child, by the time you read this, you will be much older than you are today.
+I want to tell you a few things I have learned, slowly and often the hard way.
+Be honest, even when it costs you something. It is always worth it in the end.
+Work hard, but remember to rest. A tired mind makes poor decisions.
+Your family loves you more than you know. Please take good care of them.
+When you are afraid, it usually means you are about to learn something new.
+Money is a good servant but a bad master. Never let it make your choices for you.
+Read as many books as you can. Every book is a conversation with someone wiser.
+If you ever feel lost, come home. There will always be a light on for you.
+I am proud of you, not for what you achieve, but for who you are becoming.
+Once upon a time, a little fox lived alone on top of a tall green hill.
+Every night, the fox sat quietly and counted the stars until it fell asleep.
+One morning, the fox decided to walk down the hill and see the world below.
+On the way, it met an old turtle who said, "Take your time, little one."
+The fox learned that the road is long, but every step brings you closer to home.
+A slow and steady hand will always beat a fast and nervous one.
+The market can stay irrational longer than you can stay patient, so manage your risk.
+The best time to plant a tree was twenty years ago. The second best time is now.
+Thank you for listening to my voice. I hope it keeps you company when I cannot.
+Good night, sleep well, and remember that you are always loved.

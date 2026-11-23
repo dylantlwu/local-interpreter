@@ -1,0 +1,8 @@
+# 场景：商务会议。在 hotwords.txt（通用）之上叠加。写法同 hotwords.txt，另外：
+#   @语气: ……     给翻译模型的语气要求
+@语气: Professional and polite business register. Clear, concise sentences; no slang.
+报价 = quote
+合同 = contract
+交付 = delivery
+对接 = coordinate with
+落地 = roll out

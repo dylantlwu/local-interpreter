@@ -33,11 +33,31 @@ fi
 
 # 3. Hugging Face 上的两个模型（Whisper 1.6GB、Qwen 4GB）
 echo "== 下载 Whisper 和 Qwen（约 5.6GB）"
-.venv312/bin/python -W ignore -c "
+# 国内连不上 huggingface.co 时，可以先 export HF_ENDPOINT=https://hf-mirror.com（第三方镜像）再运行本脚本
+HF_HUB_OFFLINE=0 .venv312/bin/python -W ignore -c "
 from huggingface_hub import snapshot_download
 for r in ['mlx-community/whisper-large-v3-turbo', 'mlx-community/Qwen2.5-7B-Instruct-4bit']:
     snapshot_download(r)
 "
+
+# 4. 在本机把 Whisper 压成 4 位量化版（实测准确率、速度不变，GPU 内存 2.1GB -> 1.1GB）
+if [ ! -f models/whisper-large-v3-turbo-q4/weights.safetensors ]; then
+  echo "== 生成 Whisper 4 位量化版"
+  HF_HUB_OFFLINE=1 .venv312/bin/python -W ignore -c "
+import json, mlx.core as mx, mlx.nn as nn
+from pathlib import Path
+from mlx.utils import tree_flatten
+from huggingface_hub import snapshot_download
+from mlx_whisper.load_models import load_model
+src = Path(snapshot_download('mlx-community/whisper-large-v3-turbo'))
+m = load_model(str(src), dtype=mx.float16)
+nn.quantize(m, group_size=64, bits=4)
+out = Path('models/whisper-large-v3-turbo-q4'); out.mkdir(parents=True, exist_ok=True)
+mx.save_safetensors(str(out / 'weights.safetensors'), dict(tree_flatten(m.parameters())))
+cfg = json.loads((src / 'config.json').read_text()); cfg['quantization'] = {'group_size': 64, 'bits': 4}
+(out / 'config.json').write_text(json.dumps(cfg))
+"
+fi
 
 echo
 echo "装好了。启动：.venv312/bin/python server.py  然后用 Chrome 打开 http://localhost:8765"

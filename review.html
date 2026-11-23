@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>会后纠错</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --line: #30363d; --text: #e6edf3; --muted: #8b949e;
+    --them: #58a6ff; --me: #3fb950; --warn: #f0883e; --bad: #f85149;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; background: var(--bg); display: flex; flex-wrap: wrap; align-items: center;
+    gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  .stats { color: var(--muted); font-size: 13px; display: flex; gap: 12px; }
+  .stats b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-left: auto; }
+  .seg button { border: 0; border-radius: 0; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.active { background: var(--me); color: #000; }
+  .help { width: 100%; color: var(--muted); font-size: 12px; }
+  kbd { border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font-size: 11px; }
+  main { max-width: 900px; margin: 0 auto; padding: 16px 20px 80px; display: flex; flex-direction: column; gap: 12px; }
+  .day { color: var(--muted); font-size: 13px; margin-top: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .card.zh2en { border-left: 4px solid var(--me); }
+  .card.en2zh { border-left: 4px solid var(--them); }
+  .card.focus { outline: 2px solid var(--text); outline-offset: 1px; }
+  .card.done { opacity: .55; }
+  .meta { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 6px; }
+  .st { margin-left: auto; font-weight: 600; }
+  .st.ok { color: var(--me); } .st.fixed { color: var(--warn); } .st.skip { color: var(--muted); }
+  details { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  details div { padding-left: 10px; }
+  .row { display: grid; grid-template-columns: 44px 1fr; gap: 8px; align-items: start; margin: 4px 0; }
+  .row span { color: var(--muted); font-size: 12px; padding-top: 7px; }
+  textarea { width: 100%; resize: vertical; background: var(--bg); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 8px; font: inherit; min-height: 2.2em; }
+  textarea.tr { font-size: 17px; }
+  textarea.changed { border-color: var(--warn); }
+  .was { font-size: 12px; color: var(--muted); text-decoration: line-through; margin: -2px 0 4px 52px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; align-items: center; }
+  button { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px;
+    font-size: 13px; cursor: pointer; }
+  button.ok { border-color: var(--me); color: var(--me); }
+  button.save { border-color: var(--warn); color: var(--warn); }
+  input.note, input.hw { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; font-size: 13px; }
+  input.note { flex: 1; min-width: 160px; }
+  .hwbox { margin-top: 8px; font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  audio { height: 32px; width: 100%; max-width: 420px; }
+  .empty { color: var(--muted); text-align: center; padding: 60px 0; }
+  a { color: var(--them); }
+</style>
+</head>
+<body>
+<header>
+  <h1>会后纠错</h1>
+  <div class="stats" id="stats"></div>
+  <div class="seg" id="filter">
+    <button data-f="todo" class="active">待看</button><button data-f="fixed">改过</button><button data-f="all">全部</button>
+  </div>
+  <div class="help">
+    把会议里每句的识别和翻译改成对的。<kbd>↑</kbd><kbd>↓</kbd> 换句，<kbd>⌘</kbd>+<kbd>Enter</kbd> 保存（没改就记为“译得对”），
+    <kbd>⌘</kbd>+<kbd>.</kbd> 跳过（杂音、没意义的句子、不是我说的）；有录音的句子 <kbd>⌘</kbd>+<kbd>P</kbd> 播放，照着录音把原文改成一字不差。原文错了就先改原文，再改译文。
+    改好的句子会用来自动打分（换模型、改提示词时比较好坏），攒够了还能拿来做 LoRA 微调。
+    <a href="/">回同传页面</a>
+  </div>
+</header>
+<main id="list"></main>
+<script>
+let items = [], filter = 'todo', focusId = null;
+const $ = s => document.querySelector(s);
+const esc = s => (s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ST = { ok: '✓ 译得对', fixed: '✎ 改过', skip: '跳过' };
+
+async function load() {
+  items = (await (await fetch('/review/items')).json()).items;
+  render();
+}
+
+function visible() {
+  return items.filter(it => filter === 'all' || (filter === 'todo' ? !it.fix : it.fix && it.fix.status === 'fixed'));
+}
+
+function stats() {
+  const n = s => items.filter(it => it.fix && it.fix.status === s).length;
+  $('#stats').innerHTML = `共 <b>${items.length}</b> 句 · 待看 <b>${items.filter(it => !it.fix).length}</b> · 对 <b>${n('ok')}</b> · 改过 <b>${n('fixed')}</b> · 跳过 <b>${n('skip')}</b>`;
+}
+
+function render() {
+  stats();
+  const list = $('#list');
+  const vis = visible();
+  if (!vis.length) {
+    list.innerHTML = `<div class="empty">${items.length ? '这一栏没有句子了' : '还没有记录。开一次会（或在同传页面说几句话），正式翻译会自动记到这里。'}</div>`;
+    return;
+  }
+  let html = '', day = '';
+  for (const it of vis) {
+    const d = it.time.slice(0, 10);
+    if (d !== day) { html += `<div class="day">${d}</div>`; day = d; }
+    html += card(it);
+  }
+  list.innerHTML = html;
+  if (!vis.some(it => it.id === focusId)) focusId = vis[0].id;
+  setFocus(focusId, false);
+}
+
+function card(it) {
+  const f = it.fix || {};
+  const src = f.src || it.src, tr = f.tr || it.tr;
+  const ctx = (it.history || []).map(h => `<div>${esc(h.text)} → ${esc(h.tr)}</div>`).join('');
+  const label = it.dir === 'zh2en' ? '我说 中→英' : '对方 英→中';
+  return `<div class="card ${it.dir} ${it.fix ? 'done' : ''}" data-id="${it.id}">
+    <div class="meta"><span>${it.time.slice(11)}</span><span>${label}</span>${it.scene ? `<span>场景：${esc(it.scene)}</span>` : ''}
+      <span>${esc(it.model)}</span>${it.fix ? `<span class="st ${f.status}">${ST[f.status]}${f.by === 'claude' ? '（老师标的，可直接改）' : ''}</span>` : ''}</div>
+    ${ctx ? `<details><summary>前文 ${it.history.length} 句</summary>${ctx}</details>` : ''}
+    ${it.voice_url ? `<div class="row"><span>录音</span><audio controls preload="none" src="${it.voice_url}"></audio></div>` : ''}
+    <div class="row"><span>原文</span><textarea class="src" rows="1">${esc(src)}</textarea></div>
+    ${f.src && f.src !== it.src ? `<div class="was">识别结果：${esc(it.src)}</div>` : ''}
+    <div class="row"><span>译文</span><textarea class="tr" rows="1">${esc(tr)}</textarea></div>
+    ${f.tr && f.tr !== it.tr ? `<div class="was">模型译成：${esc(it.tr)}</div>` : ''}
+    <div class="actions">
+      <button class="save">保存</button><button class="skip">跳过</button>
+      <input class="note" placeholder="备注（可不填）：哪里错了、为什么" value="${esc(f.note)}">
+    </div>
+    <div class="hwbox hidden"></div>
+  </div>`;
+}
+
+function cardOf(id) { return document.querySelector(`.card[data-id="${id}"]`); }
+
+function setFocus(id, scroll = true) {
+  document.querySelectorAll('.card.focus').forEach(c => c.classList.remove('focus'));
+  const c = cardOf(id);
+  if (!c) return;
+  focusId = id;
+  c.classList.add('focus');
+  c.querySelectorAll('textarea').forEach(fit);
+  if (scroll) c.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+function fit(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; }
+
+function move(delta) {
+  const vis = visible().map(it => it.id);
+  const i = vis.indexOf(focusId);
+  const j = Math.max(0, Math.min(vis.length - 1, i + delta));
+  if (vis[j]) setFocus(vis[j]);
+}
+
+async function save(id, skip) {
+  const it = items.find(x => x.id === id), c = cardOf(id);
+  if (!it || !c) return;
+  const src = c.querySelector('.src').value.trim(), tr = c.querySelector('.tr').value.trim();
+  const status = skip ? 'skip' : (src !== it.src || tr !== it.tr ? 'fixed' : 'ok');
+  const body = { id, status, src: src !== it.src ? src : '', tr: tr !== it.tr ? tr : '', note: c.querySelector('.note').value, old_src: it.src };
+  const before = visible().map(x => x.id);
+  const next = before[before.indexOf(id) + 1] || null;  // 先记下一句：保存后这句可能从“待看”里消失
+  const r = await (await fetch('/correct', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
+  it.fix = { ...body, status, by: 'you' };
+  // 原文改过：建议把改正加进热词表，以后识别自动改
+  if (r.hotwords && r.hotwords.length) {
+    const box = c.querySelector('.hwbox');
+    box.classList.remove('hidden');
+    box.innerHTML = '以后自动改正？' + r.hotwords.map(h => `<input class="hw" value="${esc(h)}" size="${h.length + 4}"><button class="addhw">加到热词表</button>`).join('');
+    c.classList.add('done');
+    stats();
+    return; // 停在这一句，等用户决定要不要加热词
+  }
+  render();
+  if (next) setFocus(next);
+}
+
+document.addEventListener('click', async e => {
+  const c = e.target.closest('.card');
+  if (c && c.dataset.id !== focusId) setFocus(c.dataset.id, false);
+  if (e.target.matches('.save')) save(c.dataset.id, false);
+  if (e.target.matches('.skip')) save(c.dataset.id, true);
+  if (e.target.matches('.addhw')) {
+    const line = e.target.previousElementSibling.value.trim();
+    await fetch('/hotword', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ line }) });
+    e.target.textContent = '已加'; e.target.disabled = true;
+  }
+});
+document.addEventListener('input', e => {
+  if (e.target.tagName !== 'TEXTAREA') return;
+  fit(e.target);
+  const it = items.find(x => x.id === e.target.closest('.card').dataset.id);
+  const orig = e.target.classList.contains('src') ? it.src : it.tr;
+  e.target.classList.toggle('changed', e.target.value.trim() !== orig);
+});
+document.addEventListener('keydown', e => {
+  const typing = /TEXTAREA|INPUT/.test(document.activeElement.tagName);
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); if (focusId) save(focusId, false); }
+  else if ((e.metaKey || e.ctrlKey) && e.key === '.') { e.preventDefault(); if (focusId) save(focusId, true); }
+  else if ((e.metaKey || e.ctrlKey) && e.key === 'p') { e.preventDefault(); const a = cardOf(focusId)?.querySelector('audio'); if (a) { a.currentTime = 0; a.play(); } }
+  else if (!typing && (e.key === 'ArrowDown' || e.key === 'j')) { e.preventDefault(); move(1); }
+  else if (!typing && (e.key === 'ArrowUp' || e.key === 'k')) { e.preventDefault(); move(-1); }
+});
+$('#filter').onclick = e => {
+  if (!e.target.dataset.f) return;
+  filter = e.target.dataset.f;
+  document.querySelectorAll('#filter button').forEach(b => b.classList.toggle('active', b === e.target));
+  render();
+};
+load();
+</script>
+</body>
+</html>

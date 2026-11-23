@@ -51,6 +51,11 @@
   #manual input { flex: 1; max-width: none; }
   #devices { display: flex; flex-wrap: wrap; gap: 10px; width: 100%; }
   #devices.hidden, .hidden { display: none !important; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; padding: 8px 12px; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.active { background: var(--me); color: #000; }
+  .seg button.active[data-out="mute"] { background: var(--warn); }
   .hint { color: var(--muted); font-size: 13px; width: 100%; }
 </style>
 </head>
@@ -58,6 +63,8 @@
 <header>
   <h1>同声传译</h1>
   <span class="badge">全本地运行 · 不联网</span>
+  <a href="/review" target="_blank" style="color:var(--muted);font-size:13px">会后纠错 ↗</a>
+  <a href="/record" target="_blank" style="color:var(--muted);font-size:13px">读稿录音 ↗</a>
   <div class="status">
     <span class="chan"><span id="dotMe" class="dot"></span><span id="labMe">我</span><span class="meter"><i id="meterMe"></i></span></span>
     <span class="chan" id="chanMeet"><span id="dotMeet" class="dot"></span><span>会议</span><span class="meter"><i id="meterMeet"></i></span></span>
@@ -75,10 +82,15 @@
     </select>
   </label>
   <button id="startBtn" class="primary">开始</button>
+  <div id="outModes" class="seg hidden" title="对方听到什么（数字键 1–4 切换）。会议软件的麦克风一直选 BlackHole 16ch，不用再去会议软件里切">
+    <button data-out="translate">1 翻译</button><button data-out="direct">2 直通</button><button data-out="mix">3 混合</button><button data-out="mute">4 静音</button>
+  </div>
+  <label>场景 <select id="sceneSel" title="不同场景用不同的热词、固定译法和翻译语气（文件在 scenes/ 文件夹）"></select></label>
   <button id="holdBtn" class="hold" title="现场模式下自动判断不准时用：按住时一律当中文">按住强制中文（空格）</button>
   <label id="ttsLabel"><input type="checkbox" id="ttsBox"> 朗读我的英文翻译</label>
   <select id="voiceSel" title="英文朗读声音"></select>
   <label><input type="checkbox" id="msBox" checked> 显示耗时</label>
+  <label title="开着时，我说的每句话都存一段录音（只存在本机 data/voice/），会后在纠错页面改对文字，攒起来以后做声音克隆和「越用越像我」的训练。会议模式只存我的麦克风；现场模式会存下所有说话声，别人的声音在纠错页面跳过即可。"><input type="checkbox" id="saveVoiceBox"> 保存我的录音</label>
   <div id="devices" class="hidden">
     <label>我的麦克风 <select id="micSel"></select></label>
     <label>会议声音来自 <select id="meetInSel"></select></label>
@@ -196,7 +208,9 @@ class Channel {
   }
 
   onSamples(chunk) {
-    if (speaking && !this.raw && mode() === 'live') return;
+    // 回声保护：英文语音在播、以及播完 1.5 秒内，不收我的麦克风。
+    // 否则对方手机外放的英文会被麦克风收进来 → 识别成乱码中文 → 再翻译再朗读，形成每 7 秒一圈的循环
+    if (!this.raw && echoGuard()) { if (this.inSpeech) this.flush(); return; }
     const merged = new Float32Array(this.pending.length + chunk.length);
     merged.set(this.pending); merged.set(chunk, this.pending.length);
     const frameLen = RATE * VAD.frameMs / 1000;
@@ -262,8 +276,8 @@ class Channel {
       try {
         const r = await fetch(`/stream?sid=${encodeURIComponent(u.id)}`, { method: 'POST', body: chunk.buffer });
         const j = await r.json();
+        if (j.text) { u.text = j.text; if (j.lang) u.detected = j.lang; }
         if (j.text && !u.done) {
-          u.text = j.text;
           if (!this.fixedLang && !forceZh && j.lang) u.lang = j.lang;
           const who = WHO[u.lang] || 'them';
           if (!u.el) u.el = newTurn(who); else setWho(u.el, who);
@@ -299,9 +313,12 @@ class Channel {
     this.inSpeech = false; this.utter = []; this.loudRun = 0; this.silentMs = 0; this.utterMs = 0; this.cur = null;
     this.updateDot();
     if (!had || !u) return;
+    // 把最后一点音频也送去流式识别，正式识别前用它判断"有没有字""是哪种语言"
+    u.finalStream = (async () => { if (u.sending) await u.sending; await this.streamSend(u); })();
     u.done = true;
+    u.ms = frames.length * VAD.frameMs;
     window.CUTS && CUTS.push(u.cutReason || 'flush');
-    if (frames.length * VAD.frameMs < 300) { if (u.el) u.el.remove(); return; }
+    if (u.ms < 300) { if (u.el) u.el.remove(); return; }
     handleAudio(concat(frames), u);
   }
 }
@@ -368,20 +385,35 @@ function handleAudio(audio, u) {
   enqueue(() => recognize(el, audio, u));
 }
 
+// 杂音/回声过滤：不值得送去精确识别的句子直接丢掉
+function dropReason(u) {
+  // 1 秒以上的声音，流式识别一个字都没听出来：不是人声（铃声、音乐、键盘……）
+  if (!u.text && u.ms >= 1000) return '流式识别没听到字';
+  // 固定语言的通道听到了另一种语言：是回声。我的麦克风这一路只说中文，听到英文 = 对方的英文从外放漏进来；
+  // 会议这一路只有英文，听到中文 = 我自己的声音被对方手机收到又传回来
+  const enough = u.text && (u.detected === 'zh' ? u.text.length >= 4 : u.text.split(/\s+/).length >= 2);
+  if (u.ch && u.ch.fixedLang && u.detected && enough && u.detected !== u.ch.fixedLang) return `回声（${u.ch.fixedLang}通道听到${u.detected}）`;
+  return null;
+}
+
 async function recognize(el, audio, u) {
-  let text, asrMs, lang;
-  const q = u.lang ? `lang=${u.lang}` : `lang=auto&sid=${encodeURIComponent(u.id)}`;
+  if (u.finalStream) await u.finalStream;
+  const why = dropReason(u);
+  if (why) { (window.DROPS ||= []).push(`${why}: ${u.text || ''}`); el.remove(); return; }
+  let text, asrMs, lang, voiceId;
+  let q = u.lang ? `lang=${u.lang}` : `lang=auto&sid=${encodeURIComponent(u.id)}`;
+  if ($('saveVoiceBox').checked && u.ch && u.ch.key === 'me') q += `&save=${mode() === 'meeting' ? 'me' : 'live'}`;
   try {
     const r = await fetch(`/transcribe?${q}`, { method: 'POST', body: audio.buffer });
     const j = await r.json();
     if (j.error) throw new Error(j.error);
-    text = (j.text || '').trim(); asrMs = j.ms; lang = j.lang;
+    text = (j.text || '').trim(); asrMs = j.ms; lang = j.lang; voiceId = j.voice_id || '';
   } catch (err) { el.querySelector('.orig').textContent = ''; showErr(el, '识别出错：' + err.message); return; }
   if (!text) { el.remove(); return; }
   const who = WHO[lang] || 'them';
   setWho(el, who);
   el.querySelector('.orig').classList.remove('live');
-  await translate(el, text, who, asrMs);
+  await translate(el, text, who, asrMs, voiceId);
 }
 
 async function readSSE(resp, onMsg) {
@@ -398,24 +430,28 @@ async function readSSE(resp, onMsg) {
   }
 }
 
-async function translate(el, text, who, asrMs) {
+async function translate(el, text, who, asrMs, voiceId = '') {
   el.querySelector('.orig').textContent = text;
   const trEl = el.querySelector('.tr'), msEl = el.querySelector('.ms');
   const context = history.slice(-6);
-  history.push({ who, text });
+  const entry = { who, text };          // 译完后补上译文，下一句翻译时作为"原文 → 译文"的参考
+  history.push(entry);
   let out = '', spoken = 0;
   // 会议模式：我说的话一律变成英文语音送进会议；现场模式看"朗读"开关
-  const speak = who === 'me' && (mode() === 'meeting' || $('ttsBox').checked);
+  const speak = who === 'me' && (mode() === 'meeting' ? ['translate', 'mix'].includes(outMode) : $('ttsBox').checked);
   const speakReady = (final) => {
     if (!speak) return;
     const rest = out.slice(spoken);
+    // 按句切分边译边读；少于 3 个词的碎片（如 "You..."）先不读，和后面的内容凑在一起读
     const m = final ? [rest] : rest.match(/^[\s\S]*?[.!?](?=\s)/);
-    if (m && m[0].trim()) { say(m[0].trim()); spoken += m[0].length; }
+    if (!m || !m[0].trim()) return;
+    if (!final && m[0].trim().split(/\s+/).length < 3) return;
+    say(m[0].trim()); spoken += m[0].length;
   };
   try {
     const resp = await fetch('/translate', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, direction: who === 'them' ? 'en2zh' : 'zh2en', history: context }),
+      body: JSON.stringify({ text, direction: who === 'them' ? 'en2zh' : 'zh2en', history: context, voice_id: voiceId }),
     });
     let started = false;
     await readSSE(resp, (msg) => {
@@ -423,7 +459,7 @@ async function translate(el, text, who, asrMs) {
         if (!started) { started = true; trEl.textContent = ''; msEl.textContent = ''; }
         out += msg.t; trEl.textContent = out; feed.scrollTop = feed.scrollHeight; speakReady(false);
       }
-      if (msg.done) speakReady(true);
+      if (msg.done) { speakReady(true); entry.tr = out.trim(); }
       if (msg.error) throw new Error(msg.error);
       if (msg.done && $('msBox').checked) {
         msEl.textContent = (asrMs != null ? `识别 ${(asrMs / 1000).toFixed(1)}s · ` : '')
@@ -434,11 +470,12 @@ async function translate(el, text, who, asrMs) {
 }
 
 // ---------- 英文朗读（Kokoro，本地）：会议模式送到虚拟麦克风，现场模式从扬声器放 ----------
-let playChain = Promise.resolve(), pendingSpeech = 0;
+let playChain = Promise.resolve(), pendingSpeech = 0, guardUntil = 0, currentAudio = null;
+const ECHO_TAIL_MS = 1500;                // 播完后再多等 1.5 秒：外放的回声经过对方手机/会议软件回来要时间
+const echoGuard = () => pendingSpeech > 0 || performance.now() < guardUntil;
 function say(text) {
   pendingSpeech++;
-  const live = mode() === 'live';
-  if (live) speaking = true;              // 现场模式朗读时不收音，免得把朗读当成别人说话
+  speaking = true;
   const wav = fetch('/tts', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, voice: $('voiceSel').value }),
@@ -448,12 +485,13 @@ function say(text) {
     if (!blob) return;
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
+    currentAudio = audio;
     const sink = mode() === 'meeting' ? settings.ttsOut : '';
     if (sink && audio.setSinkId) { try { await audio.setSinkId(sink); } catch (_) {} }
     await new Promise(res => { audio.onended = audio.onerror = res; audio.play().catch(res); });
     URL.revokeObjectURL(url);
   }).finally(() => {
-    if (--pendingSpeech === 0) setTimeout(() => { if (pendingSpeech === 0) speaking = false; }, 300);
+    if (--pendingSpeech === 0) { guardUntil = performance.now() + ECHO_TAIL_MS; speaking = false; }
   });
 }
 
@@ -493,6 +531,7 @@ function applyMode() {
   $('chanMeet').classList.toggle('hidden', !meeting);
   $('holdBtn').classList.toggle('hidden', meeting);
   $('ttsLabel').classList.toggle('hidden', meeting);
+  $('outModes').classList.toggle('hidden', !meeting);
   $('hint').textContent = HINTS[mode()];
   settings.mode = mode(); saveSettings();
 }
@@ -500,7 +539,7 @@ $('modeSel').onchange = () => { if (running) stopAll(); applyMode(); if (mode() 
 
 function setStatus(text) {
   statusText.textContent = text || (!running ? '未开始' : forceZh ? '强制中文'
-    : mode() === 'meeting' ? '会议同传中' : '正在听（自动分辨中英文）');
+    : mode() === 'meeting' ? OUT_NAME[outMode] : '正在听（自动分辨中英文）');
   $('holdBtn').classList.toggle('active', running && forceZh);
   $('startBtn').textContent = running ? '停止' : '开始';
 }
@@ -518,12 +557,44 @@ async function startAll() {
     channels = [new Channel({ key: 'me', deviceId: null, fixedLang: null })];
   }
   for (const c of channels) await c.start();
+  if (mode() === 'meeting') await setupOut(channels[0].stream);
   running = true;
   setStatus('预热模型…');
   try { await fetch('/warmup', { method: 'POST' }); } catch (_) {}
   setStatus();
 }
-function stopAll() { channels.forEach(c => c.stop()); channels = []; running = false; setStatus(); }
+function stopAll() {
+  channels.forEach(c => c.stop()); channels = []; running = false;
+  if (outCtx) { outCtx.close(); outCtx = outGain = null; }
+  setStatus();
+}
+
+// ---------- 会议里对方听到什么：翻译 / 直通 / 混合 / 静音 ----------
+// 原声直接送进"英文语音送到"那个虚拟声卡（会议软件的麦克风），和英文语音在声卡里混在一起
+const OUT_GAIN = { translate: 0, direct: 1, mix: 0.3, mute: 0 };
+const OUT_NAME = { translate: '翻译：对方听英文语音', direct: '直通：对方听你的原声', mix: '混合：原声小音量 + 英文语音', mute: '静音：对方什么都听不到' };
+let outMode = OUT_GAIN[settings.outMode] !== undefined ? settings.outMode : 'translate';
+let outCtx = null, outGain = null;
+async function setupOut(stream) {
+  outCtx = new AudioContext();
+  if (settings.ttsOut && outCtx.setSinkId) await outCtx.setSinkId(settings.ttsOut);
+  outGain = outCtx.createGain();
+  outGain.gain.value = OUT_GAIN[outMode];
+  outCtx.createMediaStreamSource(stream).connect(outGain).connect(outCtx.destination);
+  if (outCtx.state === 'suspended') await outCtx.resume();
+}
+function setOutMode(m) {
+  outMode = m; settings.outMode = m; saveSettings();
+  if (outGain) outGain.gain.setTargetAtTime(OUT_GAIN[m], outCtx.currentTime, 0.02);
+  if ((m === 'direct' || m === 'mute') && currentAudio) currentAudio.pause();   // 切走时正在读的英文立刻停
+  document.querySelectorAll('#outModes button').forEach(b => b.classList.toggle('active', b.dataset.out === m));
+  setStatus();
+}
+document.querySelectorAll('#outModes button').forEach(b => b.onclick = () => setOutMode(b.dataset.out));
+document.addEventListener('keydown', (e) => {
+  const m = { Digit1: 'translate', Digit2: 'direct', Digit3: 'mix', Digit4: 'mute' }[e.code];
+  if (m && mode() === 'meeting' && !typing()) { e.preventDefault(); setOutMode(m); }
+});
 
 $('startBtn').onclick = async () => {
   if (running) { stopAll(); return; }
@@ -555,8 +626,29 @@ fetch('/voices').then(r => r.json()).then(({ voices, default: def }) => {
   for (const v of voices) $('voiceSel').append(new Option(`${NAMES[v[0]]}${NAMES[v[1]]} · ${v.slice(3)}`, v, false, v === (settings.voice || def)));
 }).catch(() => {});
 $('voiceSel').onchange = () => { settings.voice = $('voiceSel').value; saveSettings(); };
+$('saveVoiceBox').checked = !!settings.saveVoice;
+$('saveVoiceBox').onchange = () => { settings.saveVoice = $('saveVoiceBox').checked; saveSettings(); };
+
+// ---------- 场景：不同的热词、固定译法和翻译语气 ----------
+async function loadScenes() {
+  const { scenes, current } = await (await fetch('/scenes')).json();
+  const sel = $('sceneSel');
+  sel.innerHTML = '';
+  sel.append(new Option('通用', ''));
+  for (const s of scenes) sel.append(new Option(s, s));
+  const want = settings.scene !== undefined && ['', ...scenes].includes(settings.scene) ? settings.scene : current;
+  sel.value = want || '';
+  if ((want || '') !== (current || '')) await setScene(sel.value);
+}
+async function setScene(name) {
+  settings.scene = name; saveSettings();
+  await fetch('/scene', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
+}
+$('sceneSel').onchange = () => setScene($('sceneSel').value).catch(e => setStatus('切换场景失败：' + e.message));
+loadScenes().catch(() => {});
 
 applyMode();
+setOutMode(outMode);
 setStatus();
 </script>
 </body>

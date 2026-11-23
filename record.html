@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>读稿录音</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --line: #30363d; --text: #e6edf3; --muted: #8b949e;
+    --them: #58a6ff; --me: #3fb950; --warn: #f0883e; --bad: #f85149;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); min-height: 100vh;
+    font: 15px/1.5 -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  .stats { color: var(--muted); font-size: 13px; }
+  .stats b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .right { margin-left: auto; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  label { color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  select { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; font-size: 13px; max-width: 240px; }
+  a { color: var(--them); font-size: 13px; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 20px 40px; }
+  .bar { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin-bottom: 20px; }
+  .bar i { display: block; height: 100%; background: var(--me); width: 0; transition: width .3s; }
+  .section { color: var(--muted); font-size: 13px; display: flex; gap: 10px; }
+  .section .pos { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .ctx { color: var(--muted); font-size: 15px; min-height: 1.5em; margin: 14px 0 6px; opacity: .6; }
+  .line { font-size: 34px; line-height: 1.45; font-weight: 600; min-height: 3em; padding: 18px 22px; border-radius: 14px;
+    background: var(--panel); border: 1px solid var(--line); }
+  .line.free::before { content: "自由讲 · 看着问题直接讲，想讲多久就讲多久"; display: block; font-size: 13px; font-weight: 400; color: var(--warn); margin-bottom: 6px; }
+  .line.rec { border-color: var(--bad); box-shadow: 0 0 0 3px #f8514933; }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 18px 0; }
+  button { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font-size: 14px; cursor: pointer; }
+  button:disabled { opacity: .4; cursor: default; }
+  #recBtn { background: #da3633; border-color: #f85149; font-weight: 600; min-width: 150px; padding: 12px 18px; font-size: 16px; }
+  #recBtn.on { animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .6; } }
+  .meter { width: 160px; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 0; background: var(--me); }
+  .meter i.hot { background: var(--bad); }
+  .timer { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 48px; }
+  .take { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: none; }
+  .take.show { display: block; }
+  .take .meta { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .take .warn { color: var(--warn); }
+  .take .bad { color: var(--bad); }
+  .take .good { color: var(--me); }
+  audio { height: 32px; width: 100%; max-width: 420px; margin-top: 8px; }
+  textarea { width: 100%; min-height: 6em; margin-top: 8px; background: var(--bg); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px; font: inherit; resize: vertical; }
+  .help { color: var(--muted); font-size: 12px; margin-top: 12px; }
+  kbd { border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font-size: 11px; }
+  details { margin-top: 24px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  .list { margin-top: 8px; display: flex; flex-direction: column; gap: 2px; max-height: 40vh; overflow-y: auto; }
+  .list div { font-size: 13px; padding: 3px 8px; border-radius: 6px; cursor: pointer; display: flex; gap: 8px; color: var(--muted); }
+  .list div:hover { background: var(--panel); }
+  .list div.cur { background: var(--panel); color: var(--text); }
+  .list div.done::before { content: "✓"; color: var(--me); }
+  .list div:not(.done)::before { content: "·"; }
+  .list .sec { color: var(--text); font-weight: 600; cursor: default; margin-top: 8px; }
+  .list .sec::before { content: "" !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>读稿录音</h1>
+  <span class="stats" id="stats"></span>
+  <div class="right">
+    <label>麦克风 <select id="micSel"></select></label>
+    <label><input type="checkbox" id="autoNext" checked> 录好自动下一句</label>
+    <a href="/review" target="_blank">会后纠错</a><a href="/">同传</a>
+  </div>
+</header>
+<main>
+  <div class="bar"><i id="bar"></i></div>
+  <div class="section"><span id="secName"></span><span class="pos" id="pos"></span></div>
+  <div class="ctx" id="prevLine"></div>
+  <div class="line" id="line">加载中……</div>
+  <div class="ctx" id="nextLine"></div>
+  <div class="controls">
+    <button id="recBtn">● 开始录（空格）</button>
+    <div class="meter"><i id="meter"></i></div><span class="timer" id="timer">0.0s</span>
+    <button id="prevBtn">← 上一句</button><button id="nextBtn">下一句 →</button>
+  </div>
+  <div class="take" id="take">
+    <div class="meta" id="takeMeta"></div>
+    <audio id="player" controls preload="none"></audio>
+    <div id="freeBox" style="display:none">
+      <textarea id="freeText" placeholder="识别出的文字，照着录音改对"></textarea>
+      <button id="freeSave">保存文字</button> <span class="stats" id="freeMsg"></span>
+    </div>
+  </div>
+  <div class="help">
+    <kbd>空格</kbd> 开始 / 停止 · <kbd>P</kbd> 听刚录的 · <kbd>R</kbd> 重录 · <kbd>←</kbd><kbd>→</kbd> 换句。
+    像平常讲话一样读，读错、笑场、卡住都没关系，重录一次就好；英文按你平时的念法。
+    每段读完休息一下；尽量同一个房间、同一支麦克风、离嘴巴一个拳头远。录音只存在本机 data/recording/。
+  </div>
+  <details><summary>全部句子（点一句跳过去）</summary><div class="list" id="list"></div></details>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => (s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const store = { get(k, d) { try { return JSON.parse(localStorage.getItem('rec.' + k)) ?? d; } catch (_) { return d; } },
+                set(k, v) { try { localStorage.setItem('rec.' + k, JSON.stringify(v)); } catch (_) {} } };
+let lines = [], idx = store.get('idx', 0);
+let ctx, stream, node, analyser, chunks = [], recording = false, t0 = 0, busy = false;
+
+async function load() {
+  lines = (await (await fetch('/recording/script')).json()).lines;
+  if (idx >= lines.length) idx = 0;
+  renderList(); show();
+}
+
+function stats() {
+  const done = lines.filter(l => l.take && !l.free), free = lines.filter(l => l.take && l.free);
+  const scripted = lines.filter(l => !l.free).length;
+  const min = lines.reduce((s, l) => s + (l.take ? l.take.speech_sec || 0 : 0), 0) / 60;
+  $('stats').innerHTML = `读稿 <b>${done.length}</b>/${scripted} 句 · 自由讲 <b>${free.length}</b> 题 · 人声共 <b>${min.toFixed(1)}</b> 分钟`;
+  $('bar').style.width = (100 * done.length / Math.max(1, scripted)) + '%';
+}
+
+function renderList() {
+  let html = '', sec = '';
+  lines.forEach((l, i) => {
+    if (l.section !== sec) { sec = l.section; html += `<div class="sec">${esc(sec)}</div>`; }
+    html += `<div data-i="${i}" class="${l.take ? 'done' : ''} ${i === idx ? 'cur' : ''}">${esc(l.text)}</div>`;
+  });
+  $('list').innerHTML = html;
+  stats();
+}
+
+function show() {
+  const l = lines[idx];
+  if (!l) return;
+  store.set('idx', idx);
+  const inSec = lines.filter(x => x.section === l.section);
+  $('secName').textContent = l.section;
+  $('pos').textContent = `本段 ${inSec.indexOf(l) + 1}/${inSec.length} · 全部 ${idx + 1}/${lines.length}`;
+  $('line').textContent = l.text;
+  $('line').classList.toggle('free', l.free);
+  $('prevLine').textContent = lines[idx - 1] && lines[idx - 1].section === l.section ? lines[idx - 1].text : '';
+  $('nextLine').textContent = lines[idx + 1] && lines[idx + 1].section === l.section ? lines[idx + 1].text : '';
+  $('prevBtn').disabled = idx === 0; $('nextBtn').disabled = idx === lines.length - 1;
+  showTake(l);
+  document.querySelectorAll('#list div[data-i]').forEach(d => d.classList.toggle('cur', +d.dataset.i === idx));
+}
+
+function quality(t) {
+  const out = [];
+  if (t.peak >= 0.98) out.push(['bad', '爆音了，离麦克风远一点或小声一点']);
+  else if (t.rms_db < -42) out.push(['warn', '声音太小，靠近一点']);
+  if (t.speech_sec < 0.4 || t.speech_sec < 0.3 * t.sec) out.push(['bad', '几乎没听到人声，重录一次']);
+  return out;
+}
+
+function showTake(l) {
+  const t = l.take;
+  $('take').classList.toggle('show', !!t);
+  if (!t) return;
+  const q = quality(t);
+  $('takeMeta').innerHTML = `<span>已录 ${t.time.slice(5, 16)}</span><span>${t.sec}s（人声 ${t.speech_sec}s）</span><span>音量 ${t.rms_db}dB</span>`
+    + (q.length ? q.map(([c, m]) => `<span class="${c}">${m}</span>`).join('') : '<span class="good">✓ 可以用</span>');
+  $('player').src = '/recording/' + t.file;
+  $('freeBox').style.display = l.free ? '' : 'none';
+  if (l.free) { $('freeText').value = t.transcript || ''; $('freeMsg').textContent = t.checked ? '文字已校对' : (t.transcript ? '识别结果，照着录音改对后保存' : '没识别出文字'); }
+}
+
+// ---- 收音：关掉回声消除、降噪、自动增益，录原声（声音克隆要干净的原始声音）----
+const WORKLET = `class R extends AudioWorkletProcessor { process(i) { if (i[0] && i[0][0]) this.port.postMessage(i[0][0].slice(0)); return true; } }
+registerProcessor('rec', R);`;
+
+async function openMic() {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  const deviceId = $('micSel').value || store.get('mic', '');
+  stream = await navigator.mediaDevices.getUserMedia({ audio: {
+    deviceId: deviceId ? { exact: deviceId } : undefined, channelCount: 1,
+    echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+  if (!ctx) {
+    ctx = new AudioContext();
+    await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' })));
+  }
+  const src = ctx.createMediaStreamSource(stream);
+  node = new AudioWorkletNode(ctx, 'rec');
+  analyser = ctx.createAnalyser(); analyser.fftSize = 1024;
+  src.connect(analyser); src.connect(node);
+  node.port.onmessage = e => { if (recording) chunks.push(e.data); };
+  await listMics();
+  meterLoop();
+}
+
+async function listMics() {
+  const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput' && !/BlackHole/.test(d.label) && !['default', 'communications'].includes(d.deviceId));
+  const cur = stream && stream.getAudioTracks()[0].getSettings().deviceId;
+  $('micSel').innerHTML = devs.map(d => `<option value="${d.deviceId}" ${d.deviceId === cur ? 'selected' : ''}>${esc(d.label || '麦克风')}</option>`).join('');
+}
+
+let meterOn = false;
+function meterLoop() {
+  if (meterOn) return; meterOn = true;
+  const buf = new Float32Array(1024);
+  const tick = () => {
+    analyser.getFloatTimeDomainData(buf);
+    let peak = 0; for (const v of buf) peak = Math.max(peak, Math.abs(v));
+    $('meter').style.width = Math.min(100, peak * 120) + '%';
+    $('meter').classList.toggle('hot', peak > 0.95);
+    if (recording) $('timer').textContent = ((performance.now() - t0) / 1000).toFixed(1) + 's';
+    requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+function wav(samples, rate) {
+  const b = new ArrayBuffer(44 + samples.length * 2), v = new DataView(b);
+  const w = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  w(0, 'RIFF'); v.setUint32(4, 36 + samples.length * 2, true); w(8, 'WAVE'); w(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true);
+  v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, samples.length * 2, true);
+  for (let i = 0; i < samples.length; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, samples[i])) * 0x7fff, true);
+  return b;
+}
+
+async function toggle() {
+  if (busy) return;
+  if (!recording) {
+    if (!stream) {
+      try { await openMic(); } catch (e) {
+        $('takeMeta').innerHTML = `<span class="bad">打不开麦克风（${esc(e.name)}）：请用 Chrome 打开这个页面，地址栏左边允许麦克风</span>`;
+        $('take').classList.add('show'); return;
+      }
+    }
+    if (ctx.state === 'suspended') await ctx.resume();
+    chunks = []; recording = true; t0 = performance.now();
+    $('recBtn').textContent = '■ 停止（空格）'; $('recBtn').classList.add('on'); $('line').classList.add('rec');
+    $('player').pause();
+    return;
+  }
+  // 多录 0.3 秒尾音再停，免得最后一个字被切掉
+  busy = true;
+  await new Promise(r => setTimeout(r, 300));
+  recording = false;
+  $('recBtn').textContent = '● 开始录（空格）'; $('recBtn').classList.remove('on'); $('line').classList.remove('rec');
+  const n = chunks.reduce((s, c) => s + c.length, 0), all = new Float32Array(n);
+  let o = 0; for (const c of chunks) { all.set(c, o); o += c.length; }
+  const l = lines[idx];
+  $('takeMeta').textContent = l.free ? '保存中，正在识别文字……' : '保存中……'; $('take').classList.add('show');
+  try {
+    const r = await fetch(`/recording/save?id=${l.id}`, { method: 'POST', body: wav(all, ctx.sampleRate) });
+    const j = await r.json();
+    if (j.error) throw new Error(j.error);
+    l.take = j.take;
+    renderList(); show();
+    if ($('autoNext').checked && !l.free && !quality(j.take).length && idx < lines.length - 1) setTimeout(() => { idx++; show(); }, 500);
+  } catch (e) { $('takeMeta').innerHTML = `<span class="bad">保存失败：${esc(e.message)}</span>`; }
+  busy = false;
+}
+
+$('recBtn').onclick = e => { e.currentTarget.blur(); toggle(); };
+$('prevBtn').onclick = e => { e.currentTarget.blur(); if (!recording && idx > 0) { idx--; show(); } };
+$('nextBtn').onclick = e => { e.currentTarget.blur(); if (!recording && idx < lines.length - 1) { idx++; show(); } };
+$('micSel').onchange = async () => { store.set('mic', $('micSel').value); await openMic(); };
+$('autoNext').checked = store.get('autoNext', true);
+$('autoNext').onchange = () => store.set('autoNext', $('autoNext').checked);
+$('list').onclick = e => { const d = e.target.closest('[data-i]'); if (d && !recording) { idx = +d.dataset.i; show(); } };
+$('freeSave').onclick = async () => {
+  const l = lines[idx];
+  await fetch('/recording/text', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: l.id, text: $('freeText').value }) });
+  l.take.transcript = $('freeText').value.trim(); l.take.checked = true; showTake(l);
+};
+document.addEventListener('keydown', e => {
+  if (/TEXTAREA|INPUT|SELECT/.test(document.activeElement.tagName)) return;
+  if (e.code === 'Space') { e.preventDefault(); toggle(); }
+  else if (e.key === 'ArrowRight' && !recording) { e.preventDefault(); $('nextBtn').click(); }
+  else if (e.key === 'ArrowLeft' && !recording) { e.preventDefault(); $('prevBtn').click(); }
+  else if ((e.key === 'p' || e.key === 'P') && !recording && lines[idx].take) { $('player').currentTime = 0; $('player').play(); }
+  else if ((e.key === 'r' || e.key === 'R') && !recording) toggle();
+});
+load();
+</script>
+</body>
+</html>

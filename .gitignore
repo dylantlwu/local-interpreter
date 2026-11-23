@@ -7,3 +7,9 @@ drivers/build/
 *.wav
 *.raw
 .DS_Store
+server.log
+data/
+.venv-clone/
+.venv-sovits/
+engines/
+recording/script.local.txt
